@@ -7,6 +7,8 @@ import math
 import numpy as np
 import timeit
 
+#TBD: add a debugging turn on/off
+
 #start timer to calculate total time to run program
 start = timeit.default_timer()
 
