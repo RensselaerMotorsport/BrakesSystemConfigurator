@@ -3,12 +3,12 @@ import matplotlib.pyplot as plt
 import math as Math
 from scipy.optimize import fsolve
 
-debugging = True
+debug = True
 
 #MOTOR VARIABLES: Emrax 228 HV 
 motor_cooling = "liquid"
 I_max_motor = 250 #A
-I_Continuous_motor = 125 #A
+#I_Continuous_motor = 125 #A
 if motor_cooling == "air":
     P_continuous_motor = 55 #kW
     T_continuous_motor = 96 #Nm
@@ -19,6 +19,8 @@ elif motor_cooling == "combined":
     P_continuous_motor = 75 #kW
     T_continuous_motor = 130 #Nm
 P_max_motor = 124 #kW @ 5500 RPM
+I_Continuous_motor = P_continuous_motor/399
+
 
 #ESC VARIABLES: Rinehart PM100DX 
 V_max_ESC = 400 #V
@@ -90,6 +92,15 @@ percentDifferenceAverage = np.zeros(len(cellBrand)) #percent difference between 
 
 s = np.zeros(len(cellBrand)) #number of cells in series to reach target voltage
 p = np.zeros(len(cellBrand)) #number of cells in parallel to reach target current
+
+segments = np.zeros((len(cellBrand),15)) #number of segments
+p_segment = np.zeros((len(cellBrand),15)) #number of cells in parallel per segment
+s_segment = np.zeros((len(cellBrand),15)) #number of cells in series per segment
+V_segment = np.zeros((len(cellBrand),15)) #V
+I_segment = np.zeros((len(cellBrand),15)) #A
+E_segment = np.zeros((len(cellBrand),15)) #J
+I_fuse_cell = np.zeros((len(cellBrand),15)) #A
+
 
 #TARGET ACCUMULATOR VALUES
 E_target_accumulator = 8 #kWh
@@ -193,6 +204,17 @@ def printAccumulatorValues(cellIndex,description):
     print("The accumulator has a mass of", round(accumulator_mass[cellIndex] , 4), "kg")
     print("")
 
+    #print all possible segment configurations for this accumulator
+    print("The following segment configurations are possible for this accumulator:")
+    for i in range(len(segments[cellIndex])):
+        if (segments[cellIndex,i] != 0):
+            print("Segment", i+1, "has", p_segment[cellIndex,i], "cells in parallel and", s_segment[cellIndex,i], "cells in series")
+            print("Segment", i+1, "has a voltage of", V_segment[cellIndex,i], "V")
+            print("Segment", i+1, "has a current of", I_segment[cellIndex,i], "A")
+            print("Segment", i+1, "has an energy of", E_segment[cellIndex,i], "J")
+            print("Segment", i+1, "has a fuse current of", I_fuse_cell[cellIndex,i], "A")
+            print("")
+
 #CALCULATE ACCUMULATOR VALUES
 #calculate accumulator values for each cell
 for i in range(len(cellBrand)):
@@ -211,26 +233,77 @@ for i in range(len(cellBrand)):
     dischargeTime_accumulator[i] = C_accumulator[i] / I_accumulator[i] #hours
 
 
-    def equations(p):
-        x, y = p
-        return (x+y**2-4, math.exp(x) + x*y - 3)
-    x, y =  fsolve(equations, (1, 1))
-
-    #calculate segment values
-    #segments               p_segment               s_segment               V_segment               E_segment     
-
-    #                                               s_segment*V_cell(-1)    V_segment                               = 0
-    #
-
-    V_segment[i] =  V_accumulator[i]
 
     
-    segments[i] = p[i]/5
-    s_segment[i] = s[i]/5
-    p_segment[i] = p[i]/5
-    V_segment[i] = V_cell[i] * segments[i] #V
+    #calculate segment energy
     segmentEnergy = (s[i] * C_cell[i] * V_cell[i] * (dischargeTime_accumulator[i]*3600))/ 1000 #kw
 
+    
+
+    #fuse max value is I_Continuous_motor (DC)
+    I_Continuous_motor = (P_continuous_motor *1000)/ V_accumulator[i] #A
+    #standard fuse sizes are 80,90,100,150,180,200
+    #https://www.digikey.com/en/products/filter/electrical-specialty-fuses/155?s=N4IgjCBcoGw1oDGUBmBDANgZwKYBoQB7KAbRACYAOAdgAYBWSkA8gTlceuZBkvttrdq1co26UAzNUqCCfeq3gFWAFnoSl4AbTBMCYBsIncwptSpNgVKibPAra5chAC6BAA4AXKCADKngCcASwA7AHMQAF8WKwtoEGRIdGx8IlIQahhyWhUuAkzs%2BjyMrIZ6IVL6C3zK8grCiBrCuwKc1nqcpjcQLx9-YPCoggBaOvjEwIBXVOJIMnKXSKWgA
+    #set fuse size to closest standard fuse size that is less than I_Continuous_motor
+    if (I_Continuous_motor < 90):
+        I_mainFuse = 80
+    elif (I_Continuous_motor < 100):
+        I_mainFuse = 90
+    elif (I_Continuous_motor < 150):
+        I_mainFuse = 100
+    elif (I_Continuous_motor < 180):
+        I_mainFuse = 150
+    elif (I_Continuous_motor < 200):
+        I_mainFuse = 180
+
+    #loop through possible number of segments
+    for n in range(1, 15):
+        #check if whole number of segments
+        if (s[i] % n != 0):
+            #set segment value to zero
+            s_segment[i,n] = 0
+        else:
+
+            #calculate segment values
+            s_segment[i,n] = (s[i]/n)
+            p_segment[i,n] = p[i]
+            V_segment[i,n] = s_segment[i,n] * V_cell[i] #V
+            I_segment[i,n] = p_segment[i,n] * I_cell[i] #A
+            E_segment[i,n] = p_segment[i,n] * s_segment[i,n] * C_cell[i] * V_cell[i] #J
+            
+            print(s_segment[i,n])
+            print(p_segment[i,n])
+
+            I_fuse_cell[i,n] = I_mainFuse * 3 / p_segment[i,n] #A
+    
+            #check if rules legal
+            #check if segment voltage is more than 120V
+            if (V_segment[i,n] > 120):
+                #set segment value to zero
+                segments[i,n] = 0
+                if (debug==True):
+                    print("rejected because segment voltage is more than 120V")        
+            #check if segment energy is more than 6 MJ
+            elif (E_segment[i,n] > 6000000):
+                #set segment value to zero
+                segments[i,n] = 0
+                if (debug==True):
+                    print("rejected because segment energy is more than 6MJ")
+            #calculate cell-level fuse continuous current
+            #reject combination of cells in segment if the continuous current of the fuse is more than 55A (max we can test) or more than 2*discharge current of the cell (ESF requirement)
+            elif (I_fuse_cell[i,n] > 55 or I_fuse_cell[i,n] > 2*I_cell[i]):
+                #set segment value to zero
+                segments[i,n] = 0
+                if (debug==True):
+                    print("rejected because fuse current is more than 55A or more than 2*cell discharge current")
+            #reject combination of cells in segment if the continuous current of the fuse is less than the continuous current of the cell
+            elif (I_fuse_cell[i,n] < I_cell[i]):
+                #set segment value to zero
+                segments[i,n] = 0
+                if (debug==True):
+                    print("rejected because fuse current is less than cell continuous current")
+            else:
+                segments[i,n] = n
 
 
 #calculate percent difference between actual and target values
@@ -310,3 +383,5 @@ else:
 
 
 #TBD, limit by rules requirements for segment energy and voltage 
+
+
