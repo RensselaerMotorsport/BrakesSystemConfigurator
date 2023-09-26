@@ -7,7 +7,7 @@ debug = True
 
 #MOTOR VARIABLES: Emrax 228 HV 
 motor_cooling = "combined"
-I_max_motor = 250 #A
+I_max_motor = 240 #A for a max of 2 minutes if cooled properlly
 #I_Continuous_motor = 125 #A
 if motor_cooling == "air":
     P_continuous_motor = 55 #kW
@@ -19,7 +19,6 @@ elif motor_cooling == "combined":
     P_continuous_motor = 62 #kW
     T_continuous_motor = 130 #Nm
 P_max_motor = 124 #kW @ 5500 RPM
-I_Continuous_motor = P_continuous_motor*1000/399
 
 
 #ESC VARIABLES: Rinehart PM100DX 
@@ -70,20 +69,7 @@ C_cell = C_cell/1000 #Ah
 cellMass = cellMass/1000 #kg
 
 #ACCUMULATOR VARIABLES
-E_accumulator = np.zeros((len(cellBrand),15,15)) #kWh
-V_accumulator = np.zeros((len(cellBrand),15)) #V
-I_accumulator = np.zeros((len(cellBrand),15,15)) #A
-P_accumulator = np.zeros((len(cellBrand),15,15)) #kW
-C_accumulator = np.zeros((len(cellBrand),15,15)) #Ah
-dischargeTime_accumulator = np.zeros((len(cellBrand),15,15)) #hours
-segmentEnergy = np.zeros((len(cellBrand),15,15)) #J
-segmentVoltage = np.zeros((len(cellBrand),15,15)) #V
-
-V_accumulator_max = 0
-V_accumulator_min = 0
-
-accumulator_cost = np.zeros((len(cellBrand),15,15,15)) #USD
-accumulator_mass = np.zeros((len(cellBrand),15,15,15)) #kg
+combinations = np.zeros((len(cellBrand)*15*15*15,20))
 
 percentDifference_E = np.zeros(len(cellBrand)) #kwH
 percentDifference_V = np.zeros(len(cellBrand)) #V
@@ -92,25 +78,12 @@ percentDifference_P = np.zeros(len(cellBrand)) #kW
 percentDifference_dischargeTime = np.zeros(len(cellBrand)) #hours
 percentDifferenceAverage = np.zeros(len(cellBrand)) #percent difference between actual and target values
 
-s = np.zeros((len(cellBrand),15)) #number of cells in series to reach target voltage
-p = np.zeros((len(cellBrand),15,15)) #number of cells in parallel to reach target current
-
-I_mainFuse = np.zeros((len(cellBrand),15,15))
-
-segments = np.zeros((len(cellBrand),15,15,15)) #number of segments
-p_segment = np.zeros((len(cellBrand),15,15,15)) #number of cells in parallel per segment
-s_segment = np.zeros((len(cellBrand),15,15,15)) #number of cells in series per segment
-V_segment = np.zeros((len(cellBrand),15,15,15)) #V
-I_segment = np.zeros((len(cellBrand),15,15,15)) #A
-E_segment = np.zeros((len(cellBrand),15,15,15)) #J
-I_fuse_cell = np.zeros((len(cellBrand),15,15,15)) #A
 
 
 #TARGET ACCUMULATOR VALUES
 E_target_accumulator = 8 #kWh
 V_target_accumulator = V_max_ESC #V
 I_target_max_accumulator = min(I_max_ESC , I_max_motor) #A
-I_target_accumulator = min(I_continuous_ESC, I_Continuous_motor) #A
 P_target_accumulator = min(P_max_ESC, P_max_motor)
 dischargeTime_target_accumulator = 0.08 #hours
 
@@ -184,279 +157,286 @@ def calculateStripFusing(cellIndex):
         wc = 1 / ()
         #ampacity[cellIndex] = ((wr+wc)/R_fuse)**(0.5)
 
-    
 
-#FUNCTION: print accumulator values for a given cell
-def printAccumulatorValues(cellIndex,description):
+
+#FUNCTION: calculate the cost and mass of the accumulator
+def accumulatorCost(brand,series,parallel):
     """
-    Prints the accumulator values for a given cell
+    Calculates the cost and mass of the accumulator
     INPUTS:
-        cellIndex: index of the cell in the database
+        none
     OUTPUTS:
         none
     """
-    print("The cell that", description, cellBrand[cellIndex], cellModel[cellIndex], "cell")
-    print("Number of cells in series:", s[cellIndex], "cells")
-    print("Number of cells in parallel:", p[cellIndex], "cells")
-    print("The accumulator has a voltage of", round(V_accumulator[cellIndex] , 4), "V")
-    print("The accumulator has a current of", round(I_accumulator[cellIndex] , 4), "A")
-    print("The accumulator has a power of", round(P_accumulator[cellIndex] , 4), "kW")
-    print("The accumulator has a capacity of", round(C_accumulator[cellIndex] , 4), "Ah")
-    print("The accumulator has a discharge time of", round(dischargeTime_accumulator[cellIndex] , 5), "hours")
-    print("The accumulator has an energy of", round(E_accumulator[cellIndex] , 3), "kWh")
-    print("The accumulator has a cost of $",round(accumulator_cost[cellIndex] , 6), "USD")
-    print("The accumulator has a mass of", round(accumulator_mass[cellIndex] , 4), "kg")
-    print("")
-
-    #print all possible segment configurations for this accumulator
-    print("The following segment configurations are possible for this accumulator:")
-    for i in range(len(segments[cellIndex])):
-        if (segments[cellIndex,i] != 0):
-            print("Segment", i+1, "has", p_segment[cellIndex,i], "cells in parallel and", s_segment[cellIndex,i], "cells in series")
-            print("Segment", i+1, "has a voltage of", V_segment[cellIndex,i], "V")
-            print("Segment", i+1, "has a current of", I_segment[cellIndex,i], "A")
-            print("Segment", i+1, "has an energy of", E_segment[cellIndex,i], "J")
-            print("Segment", i+1, "has a fuse current of", I_fuse_cell[cellIndex,i], "A")
-            print("")
-
-#CALCULATE ACCUMULATOR VALUES
-#calculate accumulator values for each cell
-for i in range(len(cellBrand)):
-    #create accumulator voltage targets: +-0.75% of target voltage
-    V_accumulator_max = (V_target_accumulator * 1.0075) #V
-    V_accumulator_min = V_target_accumulator * 0.9925 #V
+    #calculate accumulator price
+    #account for sale price if applicable
+    numCells = series * parallel
+    if (cellCostSale[brand] != -1 and cellCostSale[brand] != 0):
+        cost = numCells * cellCostSale[brand]
+    #account for bulk discount if applicable
+    elif (numCells >= range6Min[brand] and numCells <= range6Max[brand] and range6Cost[brand] != 0 and range6Cost[brand] != -1):
+        cost = numCells * range6Cost[brand]
+    elif (numCells >= range5Min[brand] and numCells <= range5Max[brand] and range5Cost[brand] != 0 and range5Cost[brand] != -1):
+        cost = numCells * range5Cost[brand]
+    elif (numCells >= range4Min[brand] and numCells <= range4Max[brand] and range4Cost[brand] != 0 and range4Cost[brand] != -1):
+        cost = numCells * range4Cost[brand]
+    elif (numCells >= range3Min[brand] and numCells <= range3Max[brand] and range3Cost[brand] != 0 and range3Cost[brand] != -1):
+        cost = numCells * range3Cost[brand]
+    elif (numCells >= range2Min[brand] and numCells <= range2Max[brand] and range2Cost[brand] != 0 and range2Cost[brand] != -1):
+        cost = numCells * range2Cost[brand]
+    elif (numCells >= range1Min[brand] and numCells <= range1Max[brand] and range1Cost[brand] != 0 and range1Cost[brand] != -1):
+        cost = numCells * range1Cost[brand]
+    #otherwise, no discount
+    else:
+        cost = numCells * cellCost[brand]
     
-    
-    s_max = Math.floor(V_accumulator_max / V_cell[i]) #V
-    s_min = Math.floor(V_accumulator_min / V_cell[i]) #V
+    return cost
 
-    #create array of intgers between s_max and s_min
-    s_accumulator_range = np.arange(s_min, s_max+1, 1)
-    
-    print("S_accumulator_range",s_accumulator_range)
 
-    #loop through possible number of cells in series
-    for j in range(len(s_accumulator_range)):
-        #get closest integer number of cells in series to reach target voltage
-        s[i,j] = s_accumulator_range[j]
+#FUNCTION: calculate all possible accumulator configurations
+def calculateAccumulatorConfigurations():
+    """
+    Calculates all possible accumulator configurations
+    INPUTS:
+        none
+    OUTPUTS:
+        combinations 
+        """
 
-        #calculate accumulator voltage
-        V_accumulator[i,j] = s[i,j] * V_cell[i] #V
+    #initalize counter for number of possible combinations
+    o = 0
+    combinations = np.zeros((len(cellBrand)*15*15*15,20))
+
+
+    #loop through possible cells
+    for i in range(len(cellBrand)):
+
+        #initalize accumulator values
+        s = 0 #number of cells in series
+        p = 0 #number of cells in parallel
+        V_accumulator = 0 #V
+        I_accumulator = 0 #A
+        E_accumulator = 0 #J
+        C_accumulator = 0 #Ah
+        P_accumulator = 0 #kW
+        dischargeTime_accumulator = 0 #hours
+
+        #initalize segment values
+        n = 0 #number of segments
+        s_segment = 0 #number of cells in series per segment
+        p_segment = 0 #number of cells in parallel per segment
+        V_segment = 0 #V
+        I_segment = 0 #A
+        E_segment = 0 #J
+
+        #initalize fuse values
+        I_mainFuse = 0 #A
 
         #get closest integer number of cells in parallel to reach target current
-        p_max = Math.floor(I_Continuous_motor / I_cell[i]) #A
-        p_min = Math.floor((I_Continuous_motor-50) / I_cell[i]) #A
+        p_max = Math.floor(I_max_motor / I_cell[i]) #A
+        p_min = Math.floor((100) / I_cell[i]) #A
         
-        
-
         #create array of integers between p_max and p_min
         p_accumulator_range = np.arange(p_min, p_max+1, 1)
-
-
+        
         #loop through possible number of cells in parallel
         for k in range(len(p_accumulator_range)):
+            p = 0
+            I_accumulator = 0
+            I_mainFuse = 0
+            I_fuse_cell = 0
+
             #get closest integer number of cells in parallel to reach target current
-            p[i,j,k] = p_accumulator_range[k] #A
+            p = p_accumulator_range[k] #A
 
-            V_accumulator[i,j] = s[i,j] * V_cell[i] #V
-            I_accumulator[i,j,k] = p[i,j,k] * I_cell[i] #A
-            P_accumulator[i,j,k] = V_accumulator[i,j] * I_accumulator[i,j,k] / 1000 #kW
-            E_accumulator[i,j,k] = p[i,j,k] * s[i,j] * C_cell[i] * V_cell[i] / 1000 #kwH 
-            C_accumulator[i,j,k] = C_cell[i] * p[i,j,k] #Ah
-            dischargeTime_accumulator[i,j,k] = C_accumulator[i,j,k] / I_accumulator[i,j,k] #hours
+            #calculate accumulator current
+            I_accumulator = p * I_cell[i] #A
 
+            #if 2*cell discharge current is more than 55A (max we can test) set cell fuse to 55A
+            if (2*I_cell[i] > 55):
+                I_fuse_cell = 55
+            #otherwise, set cell fuse to 2*cell discharge current (minus 1 for wiggle room)
+            else:
+                I_fuse_cell = 2*I_cell[i] - 1
 
-            #fuse max value is I_Continuous_motor (DC)
-            #standard fuse sizes are 80,90,100,150,180,200
-            #https://www.digikey.com/en/products/filter/electrical-specialty-fuses/155?s=N4IgjCBcoGw1oDGUBmBDANgZwKYBoQB7KAbRACYAOAdgAYBWSkA8gTlceuZBkvttrdq1co26UAzNUqCCfeq3gFWAFnoSl4AbTBMCYBsIncwptSpNgVKibPAra5chAC6BAA4AXKCADKngCcASwA7AHMQAF8WKwtoEGRIdGx8IlIQahhyWhUuAkzs%2BjyMrIZ6IVL6C3zK8grCiBrCuwKc1nqcpjcQLx9-YPCoggBaOvjEwIBXVOJIMnKXSKWgA
-            #set fuse size to closest standard fuse size that is less than I_Continuous_motor
-            if (I_accumulator[i,j,k] < 90):
-                I_mainFuse[i,j,k] = 80
-            elif (I_accumulator[i,j,k] < 100):
-                I_mainFuse[i,j,k] = 90
-            elif (I_accumulator[i,j,k] < 150):
-                I_mainFuse[i,j,k] = 100
-            elif (I_accumulator[i,j,k] < 180):
-                I_mainFuse[i,j,k] = 150
-            elif (I_accumulator[i,j,k] < 200):
-                I_mainFuse[i,j,k] = 180
+            #calculate main fuse max using third sum rule
+            I_mainFuse_max = (p * I_fuse_cell)/3
 
+            #calculate accumulator main fuse
+            #standard fuse sizes are 80,90,100,150,180,200,225,250,275
+            #https://www.digikey.com/en/products/filter/electrical-specialty-fuses/155?s=N4IgjCBcoGw1oDGUBmBDANgZwKYBoQB7KAbRACYAOAdgAYBWSkA8gTlceuZBkvttrcwA2mCYEwYACxSAzIIlTa5chEWUp1eBPq8ZQmFVrbwlVcpABdAgAcALlBABlOwCcAlgDsA5iAC%2BLNJSCCDIkOjY%2BESkIFrktJrccQxcBMn09EmGDMFp2fTkWfH0arH5CmXxUqxFCUzWIPaOLh4%2B-gQAtIXQoVBuAK5RxJBkmZZ%2BE0A
+            #set fuse size to closest standard fuse size that is less than I_accumulator
+            
+            #if I_accumulator is less than 80, return error
+            if (I_mainFuse_max < 80):
+                print("ERROR: max fuse current is less than 80A")
+                I_mainFuse = 0
+            elif(I_mainFuse_max < 90):
+                I_mainFuse = 80
+            elif (I_mainFuse_max < 100):
+                I_mainFuse = 90
+            elif (I_mainFuse_max < 150):
+                I_mainFuse = 100
+            elif (I_mainFuse_max < 180):
+                I_mainFuse = 150
+            elif (I_mainFuse_max < 200):
+                I_mainFuse = 180
+            elif (I_mainFuse_max < 225):
+                I_mainFuse = 200
+            elif (I_mainFuse_max < 250):
+                I_mainFuse = 225
+            elif (I_mainFuse_max < 275):
+                I_mainFuse = 250
+            else:
+                I_mainFuse = 275
 
             #loop through possible number of segments
-            for n in range(1, 15):
-                #check if whole number of segments
-                if (s[i,j] % n != 0):
-                    #set segment value to zero
-                    s_segment[i,j,k,n] = 0
-                else:
-
-                    #calculate segment values
-                    s_segment[i,j,k,n] = (s[i,j]/n)
-                    p_segment[i,j,k,n] = p[i,j,k]
-                    V_segment[i,j,k,n] = s_segment[i,j,k,n] * V_cell[i] #V
-                    I_segment[i,j,k,n] = p_segment[i,j,k,n] * I_cell[i] #A
-                    E_segment[i,j,k,n] = p_segment[i,j,k,n] * s_segment[i,j,k,n] * C_cell[i] * V_cell[i] #J
-                    
-                    
-
-                    I_fuse_cell[i,j,k,n] = I_mainFuse[i,j,k] * 3 / p_segment[i,k,k,n] #A
+            for n in range(1, 8):
+    
+                #calculate max and min accumulator voltage (+= 1.25% of target voltage)
+                V_accumulator_max = V_target_accumulator * 1.0125 #V
+                V_accumulator_min = V_target_accumulator * 0.9875 #V   
                 
-                    #check if rules legal
+                print(V_accumulator_min)
+    
+                #calculate max & min number of segments
+                s_seg_max = Math.floor(V_accumulator_max / (V_cell[i]*n))
+                s_seg_min = Math.ceil(V_accumulator_min / (V_cell[i]*n))
+                
+    
+                #create array of integers between s_seg_max and s_seg_min
+                s_seg_range = np.arange(s_seg_min, s_seg_max+1, 1)
+    
+                #loop through possible number of cells in series per segment
+                for j in range(len(s_seg_range)):
+    
+                    #calculate segment values
+                    s_segment = s_seg_range[j] #number of cells in series per segment
+                    p_segment = p #number of cells in parallel per segment
+                    V_segment = s_segment * V_cell[i] #V
+                    I_segment = p_segment * I_cell[i] #A
+                    E_segment = p_segment * s_segment * C_cell[i] * V_cell[i] #J
+        
+                    #calculate accumulator values
+                    s = s_segment * n #number of cells in series
+                    V_accumulator = s * V_cell[i] #V
+                    P_accumulator = V_accumulator * I_accumulator / 1000 #kW
+                    E_accumulator = p * s * C_cell[i] * V_cell[i] / 1000 #kwH 
+                    C_accumulator = C_cell[i] * p #Ah
+                    dischargeTime_accumulator = C_accumulator / I_accumulator #hours
+    
+    
+                    #check if combination is rules legal
                     #check if segment voltage is more than 120V
-                    if (V_segment[i,j,k,n] > 120):
-                        #set segment value to zero
-                        segments[i,j,k,n] = 0
-                        if (debug==True):
+                    if (V_segment> 120):
+                        if (debug==True and i==1):
                             print("rejected because segment voltage is more than 120V")        
                     #check if segment energy is more than 6 MJ
-                    elif (E_segment[i,j,k,n] > 6000000):
-                        #set segment value to zero
-                        segments[i,j,k,n] = 0
-                        if (debug==True):
+                    elif (E_segment > 6000000):
+                        if (debug==True and i==1):
                             print("rejected because segment energy is more than 6MJ")
-                    #calculate cell-level fuse continuous current
-                    #reject combination of cells in segment if the continuous current of the fuse is more than 55A (max we can test) or more than 2*discharge current of the cell (ESF requirement)
-                    elif (I_fuse_cell[i,j,k,n] > 55 or I_fuse_cell[i,j,k,n] > 2*I_cell[i]):
-                        #set segment value to zero
-                        segments[i,j,k,n] = 0
-                        if (debug==True):
-                            print("rejected because fuse current is more than 55A or more than 2*cell discharge current")
-                
-                    segments[i,j,k,n] = n
-
-"""
-#calculate percent difference between actual and target values
-for i in range(len(cellBrand)):
-    percentDifference_E[i] = abs(E_accumulator[i] - E_target_accumulator) / E_target_accumulator * 100 
-    percentDifference_V[i] = abs(V_accumulator[i] - V_target_accumulator) / V_target_accumulator * 100
-    percentDifference_I[i] = abs(I_accumulator[i] - I_target_accumulator) / I_target_accumulator * 100 
-    percentDifference_P[i] = abs(P_accumulator[i] - P_target_accumulator) / P_target_accumulator * 100 
-    percentDifference_dischargeTime[i] = abs(dischargeTime_accumulator[i] - dischargeTime_target_accumulator) / dischargeTime_target_accumulator * 100 #hours
-
-    #calculate the percent difference
-    percentDifferenceAverage[i] = (percentDifference_E[i] + percentDifference_V[i] + percentDifference_I[i] + percentDifference_P[i] + percentDifference_dischargeTime[i]) / 5
-
-
-
-#find the cell with the lowest average percent difference, lowest cost, and lowest weight
-minDiffCellIndex = np.argmin(percentDifferenceAverage)
-minCostCellIndex = np.argmin(accumulator_cost)
-minMassCellIndex = np.argmin(accumulator_mass)
-
-
-#OUTPUT RESULTS
-#output cells that create the best accumulators, as measured by percent difference to goal, cost, or weight
-#if cell with lowest average percent difference is the same as the cell with the lowest cost and lowest mass
-if (minDiffCellIndex == minCostCellIndex and minDiffCellIndex == minMassCellIndex):
-    #output accumulator values for the cell with the lowest average percent difference and lowest cost and lowest mass
-    printAccumulatorValues(minDiffCellIndex, "has the lowest average percent difference, lowest cost, and lowest weight is: ")
-#if cell with lowest average percent difference is the same as the cell with the lowest cost
-elif (minDiffCellIndex == minCostCellIndex):
-    #output accumulator values for the cell with the lowest average percent difference and lowest cost
-    printAccumulatorValues(minDiffCellIndex, "has the lowest average percent difference and lowest cost is: ")
-    #output accumulator values for the cell with the lowest mass
-    printAccumulatorValues(minMassCellIndex, "has the lowest mass is: ")
-#if cell with lowest average percent difference is the same as the cell with the lowest mass
-elif (minDiffCellIndex == minMassCellIndex):
-    #output accumulator values for the cell with the lowest average percent difference and lowest mass
-    printAccumulatorValues(minDiffCellIndex, "has the lowest average percent difference and lowest weight is: ")
-    #output accumulator values for the cell with the lowest cost
-    printAccumulatorValues(minCostCellIndex, "has the lowest cost is: ")
-#if cell with lowest cost is the same as the cell with the lowest mass
-elif (minCostCellIndex == minMassCellIndex):
-    #output accumulator values for the cell with the lowest cost
-    printAccumulatorValues(minCostCellIndex, "has the lowest cost and lowest weight is: ")
-    #output accumulator values for the cell with the lowest average percent difference
-    printAccumulatorValues(minDiffCellIndex, "has the lowest average percent difference is: ")
-else:
-    #output accumulator values for the cell with the lowest average percent difference
-    printAccumulatorValues(minDiffCellIndex, "has the lowest average percent difference is: ")
-    #output accumulator values for the cell with the lowest cost
-    printAccumulatorValues(minCostCellIndex, "has the lowest cost is: ")
-    #output accumulator values for the cell with the lowest mass
-    printAccumulatorValues(minMassCellIndex, "has the lowest mass is: ")
-
-#create a ranking 
-
-
-#TBD, limit by rules requirements for segment energy and voltage 
-"""
-
-#calculate the cost and mass of the accumulator
-for i in range(len(cellBrand)):
-    for j in range(len(s_accumulator_range)):
-        for k in range(len(p_accumulator_range)):
-            for n in range(len(segments)):
-                #if segment value is not zero
-                if (segments[i,j,k,n] != 0):
-                    #calculate segment mass
-                    accumulator_mass[i,j,k,n] = p[i,j,k] * s[i,j] * cellMass[i] #kg
-
-                    #calculate accumulator price
-                    #account for sale price if applicable
-                    if (cellCostSale[i] != -1):
-                        accumulator_cost[i,j,k,n] = p[i,j,k] * s[i,j] * cellCostSale[i]
-                    #account for bulk discount if applicable
-                    elif (p[i,j,k] * s[i,j] >= range6Min[i] and p[i,j,k] * s[i,j] <= range6Max[i]):
-                        accumulator_cost[i,j,k,n] = p[i,j,k] * s[i,j] * range6Cost[i]
-                    elif (p[i,j,k] * s[i,j] >= range5Min[i] and p[i,j,k] * s[i,j] <= range5Max[i]):
-                        accumulator_cost[i,j,k,n] = p[i,j,k] * s[i,j] * range5Cost[i]
-                    elif (p[i,j,k] * s[i,j] >= range4Min[i] and p[i,j,k] * s[i,j] <= range4Max[i]):
-                        accumulator_cost[i,j,k,n] = p[i,j,k] * s[i,j] * range4Cost[i]
-                    elif (p[i,j,k] * s[i,j] >= range3Min[i] and p[i,j,k] * s[i,j] <= range3Max[i]):
-                        accumulator_cost[i,j,k,n] = p[i,j,k] * s[i,j] * range3Cost[i]
-                    elif (p[i,j,k] * s[i,j] >= range2Min[i] and p[i,j,k] * s[i,j] <= range2Max[i]):
-                        accumulator_cost[i,j,k,n] = p[i,j,k] * s[i,j] * range2Cost[i]
-                    elif (p[i,j,k] * s[i,j] >= range1Min[i] and p[i,j,k] * s[i,j] <= range1Max[i]):
-                        accumulator_cost[i,j,k,n] = p[i,j,k] * s[i,j] * range1Cost[i]
-                    #otherwise, no discount
+                    #check if energy is less than 5 kWh
+                    elif (E_accumulator > 5500):
+                        if (debug==True and i==1):
+                            print("rejected because accumulator energy is more than 5kWh")
                     else:
-                        accumulator_cost[i,j,k,n] = p[i,j,k] * s[i,j] * cellCost[i]
-#OUTPUT RESULTS
+                        #record combination
+    
+                        combinations[o,0] =  o #combination number
+                        combinations [o,1] = i #cell index
+    
+                        #record accumulator values
+                        combinations [o,2] = s #number of cells in series
+                        combinations [o,3] = p #number of cells in parallel
+                        combinations [o,4] = V_accumulator #V
+                        combinations [o,5] = I_accumulator #A
+                        combinations [o,6] = E_accumulator #J
+                        combinations [o,7] = C_accumulator #Ah                            
+                        combinations [o,8] = P_accumulator #kW
+                        combinations [o,9] = dischargeTime_accumulator #hours
+    
+                        #record segment values
+                        combinations [o,10] = n #number of segments
+                        combinations [o,11] = s_segment #number of cells in series per segment
+                        combinations [o,12] = p_segment #number of cells in parallel per segment
+                        combinations [o,13] = V_segment #V
+                        combinations [o,14] = I_segment #A
+                        combinations [o,15] = E_segment #J
+        
+                        #record fuse values
+                        combinations [o,16] = I_fuse_cell #A
+                        combinations [o,17] = I_mainFuse #A
+    
+                        #record cost and mass
+                        combinations [o,18] = accumulatorCost(i,s,p) #USD
+                        combinations [o,19] = p * s * cellMass[i] #kg
+                            
+                        #increment counter
+                        o += 1
+
+
+    #delete duplicate entries and zeros
+    combinations = np.unique(combinations, axis=0)    
+
+    #return array of possible combinations
+    return combinations, o
+
+#FUNCTION: print all possible accumulator configurations
+def printAccumulatorConfigurations(combinations,o):
+    """
+    Prints all possible accumulator configurations
+    INPUTS:
+        combinations: array of possible accumulator configurations
+    OUTPUTS:
+        none
+    """
+
+    #delete combinations where main fuse is 0
+    combinations = combinations[combinations[:,17] != 0]
+
+    #sort combinations by cost
+    #combinations = combinations[combinations[:,18].argsort()]
+    #reverse combinations so that lowest cost is first
+    #combinations = combinations[::-1]
+
+    #sort combinations by mass
+    combinations = combinations[combinations[:,19].argsort()]
+    #reverse combinations so that lowest mass is first
+    combinations = combinations[::-1]
+
+    
+    #loop through combinations
+    for i in range(len(combinations)):
+        #print accumulator values
+            print("Combination #", combinations[i,0])
+            print("Cell Brand:", cellBrand[int(combinations[i,1])], "Cell Model",cellModel[int(combinations[i,1])])
+            print("Number of cells in series:", combinations[i,2], "cells")
+            print("Number of cells in parallel:", combinations[i,3], "cells")
+            print("The accumulator has a voltage of", combinations[i,4], "V")
+            print("The accumulator has a current of", combinations[i,5], "A")
+            print("The accumulator has a power of", combinations[i,8], "kW")
+            print("The accumulator has a capacity of", combinations[i,7], "Ah")
+            print("The accumulator has a discharge time of", combinations[i,9], "hours")
+            print("The accumulator has an energy of", combinations[i,6], "kWh")
+            print("The accumulator has a cost of $",combinations[i,18], "USD")
+            print("The accumulator has a mass of", round(combinations[i,19] , 4), "kg")
+            print("Segment Values:")
+            print("Number of segments:", combinations[i,10])
+            print("Number of cells in series per segment:", combinations[i,11])
+            print("Number of cells in parallel per segment:", combinations[i,12])
+            print("Segment voltage:", combinations[i,13], "V")
+            print("Segment current:", combinations[i,14], "A")
+            print("Segment energy:", combinations[i,15], "J")
+            print("Fuse Values:")
+            print("Fuse current:", combinations[i,16], "A")
+            print("Main fuse current:", combinations[i,17], "A")
+            print("")
+        
 
 
 
-#output accumulator values for each cell
-for i in range(len(cellBrand)):
 
-    #output cell brand
-    print("Cell:", cellBrand[i], cellModel[i])
-    print("")
-    #output accumulator values each voltage combination
-    for j in range(len(s_accumulator_range)):
-
-        #output accumulator values each current combination
-        for k in range(len(p_accumulator_range)):
-            
-            #output accumulator values for each segment combination
-            for n in range(len(segments)):
-
-                #if segment value is not zero
-                if (segments[i,j,k,n] != 0):
-
-                    #output accumulator values
-                    print("Number of cells in parallel:", p[i,j,k], "cells")
-                    print("Number of cells in series:", s[i,j], "cells")
-                    print("Voltage:", V_accumulator[i,j], "V")
-                    print("Current:", I_accumulator[i,j,k], "A")
-                    print("Energy:", E_accumulator[i,j,k], "J")
-                    print("Fuse current:", I_mainFuse[i,j,k], "A")
-                    print("Cell-level fuse current:", I_fuse_cell[i,j,k,n], "A")
-                    print("")
-
-                    print("Segment:", segments[i,j,k,n])
-                    print("Number of cells in parallel (segment):", p_segment[i,j,k,n], "cells")
-                    print("Number of cells in series (segment):", s_segment[i,j,k,n], "cells")
-                    print("Voltage:", V_segment[i,j,k,n], "V")
-                    print("Current:", I_segment[i,j,k,n], "A")
-                    print("Energy:", E_segment[i,j,k,n], "J")
-                    print("")
-
-                    print("Cost:", accumulator_cost[i,j,k,n], "USD")
-                    print("Mass:", accumulator_mass[i,j,k,n], "kg")
-                    print("")
-
-    print("------------------------------")
-
+configs, index = calculateAccumulatorConfigurations()
+printAccumulatorConfigurations(configs,index)
 
 
