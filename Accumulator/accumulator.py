@@ -1,7 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import math as Math
-from scipy.optimize import fsolve
+
+#TODO:
+#figure out touch safe segment voltage math
+#set constants as all caps
+#calculate optimal packaging
+#figure out what variables are not being used
+#fix units for accumulator & segment energy
 
 debug = True
 
@@ -19,6 +25,22 @@ elif motor_cooling == "combined":
     P_continuous_motor = 62 #kW
     T_continuous_motor = 130 #Nm
 P_max_motor = 124 #kW @ 5500 RPM
+
+#SIZING VARIABLES 
+
+#cell dimensions (assuming 18650)
+cellSpacingMin = 0.005 #m 
+cellSpacingMax = 0.0075 #m
+I_cellSpacingSlope = 0.017 #A/m
+I_cellSpacingIntercept = 3.3 #A
+
+horizontalSpacing = 0.0 #m (center to center distance between cells), was 15mm last year
+verticalSpacing = 0.03 #m (center to center distance between cells)
+
+
+
+cellDiameter = 0.018 #m
+cellHeight = 0.065 #m
 
 
 #ESC VARIABLES: Rinehart PM100DX 
@@ -71,13 +93,39 @@ cellMass = cellMass/1000 #kg
 #ACCUMULATOR VARIABLES
 combinations = np.zeros((len(cellBrand)*15*15*15,20))
 
-
 #TARGET ACCUMULATOR VALUES
 V_target_accumulator = V_max_ESC #V
 I_target_max_accumulator = min(I_max_ESC , I_max_motor) #A
 P_target_accumulator = min(P_max_ESC, P_max_motor)
 dischargeTime_target_accumulator = 0.08 #hours
 
+#FUNCTION: calculate the best packaging for the accumulator
+def accumulatorPackaging(series,parallel,segments,I_accumulator):
+    """
+    Calculates the best packaging for the accumulator
+    INPUTS:
+        series: number of cells in series
+        parallel: number of cells in parallel
+        segments: number of segments
+    OUTPUTS:
+        length: length of accumulator
+        width: width of accumulator
+        height: height of accumulator
+    """
+    #this is not correct yet, ignore for now
+
+    #calculate cell spacing based on accumulator amperage
+    cellSpacing = I_cellSpacingSlope * I_accumulator + I_cellSpacingIntercept #m
+    verticalSpacing = (((horizontalSpacing)**2) + (cellSpacing)**2) ** 0.5
+
+
+    #calculate length, width, and height of segment
+    segmentLength = series * horizontalSpacing + (2*0.015) #m
+    segmentWidth = parallel * verticalSpacing + (2*0.0023) #m
+
+    #calculate length, width, and height of accumulator
+    accumulatorHeight = cellHeight * segments + (segments+1)*0.012#m 
+    accumulatorLength = segmentLength + 0.160 #m, accounting for component spacing
 
 #FUNCTION: calculate the cost and mass of the accumulator
 def accumulatorCost(brand,series,parallel):
@@ -121,7 +169,7 @@ def calculateAccumulatorConfigurations():
         none
     OUTPUTS:
         combinations 
-        """
+    """
 
     #initalize counter for number of possible combinations
     o = 0
@@ -151,6 +199,7 @@ def calculateAccumulatorConfigurations():
 
         #initalize fuse values
         I_mainFuse = 0 #A
+        I_fuse_cell = 0 #A
 
         #get closest integer number of cells in parallel to reach target current
         p_max = Math.floor(I_max_motor / I_cell[i]) #A
@@ -161,10 +210,6 @@ def calculateAccumulatorConfigurations():
         
         #loop through possible number of cells in parallel
         for k in range(len(p_accumulator_range)):
-            p = 0
-            I_accumulator = 0
-            I_mainFuse = 0
-            I_fuse_cell = 0
 
             #get closest integer number of cells in parallel to reach target current
             p = p_accumulator_range[k] #A
@@ -183,14 +228,20 @@ def calculateAccumulatorConfigurations():
             I_mainFuse_max = (p * I_fuse_cell)/3
 
             #calculate accumulator main fuse
-            #standard fuse sizes are 80,90,100,150,180,200,225,250,275
+            #standard fuse sizes are 50,60,70,80,90,100,150,180,200,225,250,275
             #https://www.digikey.com/en/products/filter/electrical-specialty-fuses/155?s=N4IgjCBcoGw1oDGUBmBDANgZwKYBoQB7KAbRACYAOAdgAYBWSkA8gTlceuZBkvttrcwA2mCYEwYACxSAzIIlTa5chEWUp1eBPq8ZQmFVrbwlVcpABdAgAcALlBABlOwCcAlgDsA5iAC%2BLNJSCCDIkOjY%2BESkIFrktJrccQxcBMn09EmGDMFp2fTkWfH0arH5CmXxUqxFCUzWIPaOLh4%2B-gQAtIXQoVBuAK5RxJBkmZZ%2BE0A
             #set fuse size to closest standard fuse size that is less than I_accumulator
             
-            #if I_accumulator is less than 80, return error
-            if (I_mainFuse_max < 80):
-                print("ERROR: max fuse current is less than 80A")
+            #if I_accumulator is less than 50, return error
+            if (I_mainFuse_max < 50):
+                print("ERROR: max fuse current is less than 50A")
                 I_mainFuse = 0
+            elif (I_mainFuse_max < 60):
+                I_mainFuse = 50
+            elif (I_mainFuse_max < 70):
+                I_mainFuse = 60
+            elif (I_mainFuse_max < 80):
+                I_mainFuse = 70
             elif(I_mainFuse_max < 90):
                 I_mainFuse = 80
             elif (I_mainFuse_max < 100):
@@ -216,10 +267,8 @@ def calculateAccumulatorConfigurations():
                 #calculate max and min accumulator voltage (+= 1.25% of target voltage)
                 V_accumulator_max = V_target_accumulator * 1.0125 #V
                 V_accumulator_min = V_target_accumulator * 0.9875 #V   
-                
-                print(V_accumulator_min)
-    
-                #calculate max & min number of segments
+                    
+                #calculate max & min number of series cells per segments
                 s_seg_max = Math.floor(V_accumulator_max / (V_cell[i]*n))
                 s_seg_min = Math.ceil(V_accumulator_min / (V_cell[i]*n))
                 
@@ -259,7 +308,7 @@ def calculateAccumulatorConfigurations():
                         #if (debug==True):
                             #print("rejected because not touch safe (voltage >60V)")
                     #check if energy is less than 5 kWh
-                    elif (E_accumulator > 5500):
+                    elif (E_accumulator < 5.5):
                         if (debug==True and i==1):
                             print("rejected because accumulator energy is more than 5kWh")
                     #check that power is less than 80kW
@@ -297,6 +346,13 @@ def calculateAccumulatorConfigurations():
                         #record cost and mass
                         combinations [o,18] = accumulatorCost(i,s,p) #USD
                         combinations [o,19] = p * s * cellMass[i] #kg
+
+                        #record dimensions
+                        #combinations[i,20] = #segment length
+                        #combinations[i,21] = #segment width
+                        #combinations[i,22] = #accumulator length
+                        #combinations[i,23] = #accumulator width
+                        #combinations[i,24] = #accumulator height
                             
                         #increment counter
                         o += 1
@@ -357,6 +413,7 @@ def printAccumulatorConfigurations(combinations,o):
             print("Fuse Values:")
             print("Fuse current:", combinations[i,16], "A")
             print("Main fuse current:", combinations[i,17], "A")
+            print("Sizing: (tbd)")
             print("")
         
 
