@@ -1,34 +1,37 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import math as Math
+import csv
 
-#TODO:
+#TO-DO:
 #figure out touch safe segment voltage math
 #set constants as all caps
 #calculate optimal packaging
 #figure out what variables are not being used
 #fix units for accumulator & segment energy
+#fix motor variable info
+#filter for rules required voltage
+#add segment contributions to weight (and cost?)
 
 debug = True
 
 #MOTOR VARIABLES: Emrax 228 HV 
-motor_cooling = "combined"
-I_max_motor = 240 #A for a max of 2 minutes if cooled properlly
+MOTOR_COOLING = "combined"
+I_MAX_MOTOR = 240 #A for a max of 2 minutes if cooled properlly
 #I_Continuous_motor = 125 #A
-if motor_cooling == "air":
+if MOTOR_COOLING == "air":
     P_continuous_motor = 55 #kW
     T_continuous_motor = 96 #Nm
-elif motor_cooling == "liquid":
+elif MOTOR_COOLING == "liquid":
     P_continuous_motor = 64 #kW
     T_continuous_motor = 112 #Nm
-elif motor_cooling == "combined":
+elif MOTOR_COOLING == "combined":
     P_continuous_motor = 62 #kW
     T_continuous_motor = 130 #Nm
-P_max_motor = 124 #kW @ 5500 RPM
+P_MAX_MOTOR = 124 #kW @ 5500 RPM
 
 #SIZING VARIABLES 
 
-#cell dimensions (assuming 18650)
 cellSpacingMin = 0.005 #m 
 cellSpacingMax = 0.0075 #m
 I_cellSpacingSlope = 0.017 #A/m
@@ -37,21 +40,20 @@ I_cellSpacingIntercept = 3.3 #A
 horizontalSpacing = 0.0 #m (center to center distance between cells), was 15mm last year
 verticalSpacing = 0.03 #m (center to center distance between cells)
 
-
-
+#cell dimensions (assuming 18650)
 cellDiameter = 0.018 #m
 cellHeight = 0.065 #m
 
 
 #ESC VARIABLES: Rinehart PM100DX 
-V_max_ESC = 400 #V
-I_max_ESC = 300 #A
-I_continuous_ESC = 350 #A
-P_max_ESC = 100 #kW
+V_MAX_ESC = 400 #V
+I_MAX_ESC = 300 #A
+I_CON_ESC = 350 #A
+P_MAX_ESC = 100 #kW
 
 #CELL VARIABLES
 #import values from database
-cellDatabase = np.loadtxt(open("18650 cell database.csv", "rb"), delimiter=",", skiprows=2, dtype=str)
+cellDatabase = np.loadtxt(open("18650 cell database.csv", "rb"), delimiter=",", skiprows=1, dtype=str)
 
 cellBrand = np.asanyarray(cellDatabase[:, [3]], dtype = str)
 cellModel = np.asanyarray(cellDatabase[:, [4]], dtype = str) 
@@ -94,9 +96,10 @@ cellMass = cellMass/1000 #kg
 combinations = np.zeros((len(cellBrand)*15*15*15,20))
 
 #TARGET ACCUMULATOR VALUES
-V_target_accumulator = V_max_ESC #V
-I_target_max_accumulator = min(I_max_ESC , I_max_motor) #A
-P_target_accumulator = min(P_max_ESC, P_max_motor)
+#EV.4.1.2 The maximum permitted voltage that may occur between any two points must not exceed 600 V DC
+V_target_accumulator = min(V_MAX_ESC, 600) #V
+I_target_max_accumulator = min(I_MAX_ESC , I_MAX_MOTOR) #A
+P_target_accumulator = min(P_MAX_ESC, P_MAX_MOTOR)
 dischargeTime_target_accumulator = 0.08 #hours
 
 #FUNCTION: calculate the best packaging for the accumulator
@@ -202,7 +205,7 @@ def calculateAccumulatorConfigurations():
         I_fuse_cell = 0 #A
 
         #get closest integer number of cells in parallel to reach target current
-        p_max = Math.floor(I_max_motor / I_cell[i]) #A
+        p_max = Math.floor(I_MAX_MOTOR / I_cell[i]) #A
         p_min = Math.floor((100) / I_cell[i]) #A
         
         #create array of integers between p_max and p_min
@@ -293,11 +296,18 @@ def calculateAccumulatorConfigurations():
                     E_accumulator = p * s * C_cell[i] * V_cell[i] / 1000 #kwH 
                     C_accumulator = C_cell[i] * p #Ah
                     dischargeTime_accumulator = C_accumulator / I_accumulator #hours
+
+                    #calculate segment weight
+                    segmentWeight = p_segment * s_segment * cellMass[i] #kg
     
     
                     #check if combination is rules legal
+                    #make sure segment weight is less than 12kg (F.10.3.2.b.)
+                    if (segmentWeight > 12):
+                        if (debug==True and i==1):
+                            print("rejected because segment weight is more than 12kg")
                     #check if segment voltage is more than 120V
-                    if (V_segment> 120):
+                    elif (V_segment> 120):
                         if (debug==True and i==1):
                             print("rejected because segment voltage is more than 120V")        
                     #check if segment energy is more than 6 MJ
@@ -415,12 +425,36 @@ def printAccumulatorConfigurations(combinations,o):
             print("Main fuse current:", combinations[i,17], "A")
             print("Sizing: (tbd)")
             print("")
-        
+    #print number of possible combinations
+    print("There are", o, "possible accumulator configurations")
+
+#FUNCTION: print all possible accumulator configurations for input into spreadsheet
+def printAccumulatorConfigurationsSpreadsheet(combinations,o):       
+    #delete combinations where main fuse is 0
+    combinations = combinations[combinations[:,17] != 0]
+
+    #delete duplicate entries and zeros
+    combinations = np.unique(combinations, axis=0)
+
+    #loop through combinations
+    for i in range(len(combinations)):
+        #print accumulator values
+        print(combinations[i,0] , "," , cellBrand[int(combinations[i,1])] , "," , cellModel[int(combinations[i,1])] , "," , combinations[i,2] , "," , combinations[i,3] , "," , combinations[i,4] , "," , combinations[i,5] , "," , combinations[i,8] , "," , combinations[i,7] , "," , combinations[i,9] , "," , combinations[i,6] , "," , combinations[i,18] , "," , combinations[i,19] , "," , combinations[i,10] , "," , combinations[i,11] , "," , combinations[i,12] , "," , combinations[i,13] , "," , combinations[i,14] , "," , combinations[i,15] , "," , combinations[i,16] , "," , combinations[i,17])
+
+    
+    #print row headers
+    print("Combination #" , "," , "Cell Brand" , "," , "Cell Model" , "," , "Number of cells in series" , "," , "Number of cells in parallel" , "," , "The accumulator has a voltage" , "," , "The accumulator has a current" , "," , "The accumulator has a power" , "," , "The accumulator has a capacity" , "," , "The accumulator has a discharge time" , "," , "The accumulator has an energy" , "," , "The accumulator has a cost" , "," , "The accumulator has a mass" , "," , "Number of segments" , "," , "Number of cells in series per segment" , "," , "Number of cells in parallel per segment" , "," , "Segment voltage" , "," , "Segment current" , "," , "Segment energy" , "," , "Fuse current" , "," , "Main fuse current")
+    print("")
+
+    #print number of possible combinations
+    print("There are", o, "possible accumulator configurations")
+
+
 
 
 
 
 configs, index = calculateAccumulatorConfigurations()
-printAccumulatorConfigurations(configs,index)
+printAccumulatorConfigurationsSpreadsheet(configs,index)
 
 
