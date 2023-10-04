@@ -265,7 +265,7 @@ def calculateAccumulatorConfigurations():
                 I_mainFuse = 275
 
             #loop through possible number of segments
-            for n in range(1, 8):
+            for n in range(1, 9):
     
                 #calculate max and min accumulator voltage (+= 1.25% of target voltage)
                 V_accumulator_max = V_target_accumulator * 1.0125 #V
@@ -314,9 +314,9 @@ def calculateAccumulatorConfigurations():
                     elif (E_segment > 6000000):
                         if (debug==True and i==1):
                             print("rejected because segment energy is more than 6MJ")
-                    #elif (V_segment > 60):
-                        #if (debug==True):
-                            #print("rejected because not touch safe (voltage >60V)")
+                    elif (V_segment > 60):
+                        if (debug==True):
+                            print("rejected because not touch safe (voltage >60V)")
                     #check if energy is less than 5 kWh
                     elif (E_accumulator < 5.5):
                         if (debug==True and i==1):
@@ -455,6 +455,11 @@ def printAccumulatorConfigurationsSpreadsheet(combinations,o):
 
 
 configs, index = calculateAccumulatorConfigurations()
-printAccumulatorConfigurationsSpreadsheet(configs,index)
+
+#outputs accumulator values in CSV form
+#printAccumulatorConfigurationsSpreadsheet(configs,index)
+
+#outouts accumulator values in easily readable form
+printAccumulatorConfigurations(configs,index)
 
 
