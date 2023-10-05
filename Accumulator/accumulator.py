@@ -38,7 +38,7 @@ I_cellSpacingSlope = 0.017 #A/m
 I_cellSpacingIntercept = 3.3 #A
 
 horizontalSpacing = 0.0 #m (center to center distance between cells), was 15mm last year
-verticalSpacing = 0.03 #m (center to center distance between cells)
+verticalSpacing = 0.015 #m (center to center distance between cells)
 
 #cell dimensions (assuming 18650)
 cellDiameter = 0.018 #m
@@ -92,8 +92,6 @@ range6Cost = np.asanyarray(cellDatabase[:, [34]], dtype = float) #discount for r
 C_cell = C_cell/1000 #Ah
 cellMass = cellMass/1000 #kg
 
-#ACCUMULATOR VARIABLES
-combinations = np.zeros((len(cellBrand)*15*15*15,20))
 
 #TARGET ACCUMULATOR VALUES
 #EV.4.1.2 The maximum permitted voltage that may occur between any two points must not exceed 600 V DC
@@ -105,7 +103,7 @@ dischargeTime_target_accumulator = 0.08 #hours
 #FUNCTION: calculate the best packaging for the accumulator
 def accumulatorPackaging(series,parallel,segments,I_accumulator):
     """
-    Calculates the best packaging for the accumulator
+    Calculates the best packaging for the accumulator (without mounting tabs)
     INPUTS:
         series: number of cells in series
         parallel: number of cells in parallel
@@ -115,20 +113,62 @@ def accumulatorPackaging(series,parallel,segments,I_accumulator):
         width: width of accumulator
         height: height of accumulator
     """
-    #this is not correct yet, ignore for now
-
+    
     #calculate cell spacing based on accumulator amperage
-    cellSpacing = I_cellSpacingSlope * I_accumulator + I_cellSpacingIntercept #m
-    verticalSpacing = (((horizontalSpacing)**2) + (cellSpacing)**2) ** 0.5
+    cellSpacing = (I_cellSpacingSlope * I_accumulator + I_cellSpacingIntercept)/1000 #m
+    horizontalSpacing = (((cellSpacing+cellDiameter)**2-(verticalSpacing)**2)) ** 0.5
 
-
+    segmentLength = series * horizontalSpacing #m
+    accumulatorLength = segmentLength #m, 
+    
     #calculate length, width, and height of segment
-    segmentLength = series * horizontalSpacing + (2*0.015) #m
+
     segmentWidth = parallel * verticalSpacing + (2*0.0023) #m
+    segmentHeight = 0.08
 
     #calculate length, width, and height of accumulator
-    accumulatorHeight = cellHeight * segments + (segments+1)*0.012#m 
-    accumulatorLength = segmentLength + 0.160 #m, accounting for component spacing
+    accumulatorWidth = segmentHeight * segments +0.03
+    accumulatorHeight = segmentWidth #m 
+    
+    
+
+    #make sure smallest dimension is height
+    #if length is less than height, swap length and height
+    if (accumulatorLength < accumulatorHeight):
+        accumulatorLength, accumulatorHeight = accumulatorHeight, accumulatorLength
+    #if width is less than height, swap width and height
+    if (accumulatorWidth < accumulatorHeight):
+        accumulatorWidth, accumulatorHeight = accumulatorHeight, accumulatorWidth
+
+    #if length + spacing is more than last year +5mm (0.63m)
+    if ((accumulatorLength+0.21 > 0.63) and (accumulatorWidth < accumulatorLength)):
+        #swap width and length
+        accumulatorLength, accumulatorWidth = accumulatorWidth, accumulatorLength
+    
+    #then account for component spacing in length
+    accumulatorLength += 0.210 #m, accounting for component spacing
+
+    #account for cooling spacing in height 
+    accumulatorHeight += 0.161
+
+    print("L",accumulatorLength)
+    print("H",accumulatorHeight)
+    print("W",accumulatorWidth)
+    #last year's values (max)
+    #horizontal cell spacing = 29.6mm 
+    #W = 17 in = 0.43 m
+    #L = 23 in = 0.58 m
+    #H = 10.5 in = 0.27 m
+
+    #return zero dimensions if accumulator is too big (1mm bigger than last year's accumulator, calculation error)
+    if (accumulatorLength > 0.59 or accumulatorWidth > 0.44 or accumulatorHeight > 0.28):
+        accumulatorLength, accumulatorWidth, accumulatorHeight = 0, 0, 0
+
+
+
+
+    #filter for values that will not fit (size of last year's accumulator)
+    return accumulatorLength, accumulatorWidth, accumulatorHeight
 
 #FUNCTION: calculate the cost and mass of the accumulator
 def accumulatorCost(brand,series,parallel):
@@ -176,7 +216,7 @@ def calculateAccumulatorConfigurations():
 
     #initalize counter for number of possible combinations
     o = 0
-    combinations = np.zeros((len(cellBrand)*15*15*15,20))
+    combinations = np.zeros((len(cellBrand)*15*15*15,25))
 
 
     #loop through possible cells
@@ -314,13 +354,13 @@ def calculateAccumulatorConfigurations():
                     elif (E_segment > 6000000):
                         if (debug==True and i==1):
                             print("rejected because segment energy is more than 6MJ")
-                    elif (V_segment > 60):
-                        if (debug==True):
-                            print("rejected because not touch safe (voltage >60V)")
+                    #elif (V_segment > 60):
+                        #if (debug==True):
+                            #print("rejected because not touch safe (voltage >60V)")
                     #check if energy is less than 5 kWh
                     elif (E_accumulator < 5.5):
                         if (debug==True and i==1):
-                            print("rejected because accumulator energy is more than 5kWh")
+                            print("rejected because accumulator energy is more than 5.5kWh")
                     #check that power is less than 80kW
                     elif (P_accumulator > 80):
                         if (debug==True and i==1):
@@ -339,7 +379,7 @@ def calculateAccumulatorConfigurations():
                         combinations [o,6] = E_accumulator #J
                         combinations [o,7] = C_accumulator #Ah                            
                         combinations [o,8] = P_accumulator #kW
-                        combinations [o,9] = dischargeTime_accumulator #hours
+                        combinations [o,9] = dischargeTime_accumulator*60 #min
     
                         #record segment values
                         combinations [o,10] = n #number of segments
@@ -358,18 +398,20 @@ def calculateAccumulatorConfigurations():
                         combinations [o,19] = p * s * cellMass[i] #kg
 
                         #record dimensions
-                        #combinations[i,20] = #segment length
-                        #combinations[i,21] = #segment width
-                        #combinations[i,22] = #accumulator length
-                        #combinations[i,23] = #accumulator width
-                        #combinations[i,24] = #accumulator height
+                        combinations[o,20], combinations[o,21], combinations[o,22] = accumulatorPackaging(s_segment,p,n,I_accumulator)
+ 
                             
                         #increment counter
                         o += 1
 
-
     #delete duplicate entries and zeros
     combinations = np.unique(combinations, axis=0)    
+    
+    #delete combinations where main fuse is 0
+    combinations = combinations[combinations[:,17] != 0]
+
+    #delete combinations where accumulator length is 0
+    combinations = combinations[combinations[:,20] != 0]
 
     #return array of possible combinations
     return combinations, o
@@ -383,9 +425,6 @@ def printAccumulatorConfigurations(combinations,o):
     OUTPUTS:
         none
     """
-
-    #delete combinations where main fuse is 0
-    combinations = combinations[combinations[:,17] != 0]
 
     #sort combinations by cost
     #combinations = combinations[combinations[:,18].argsort()]
@@ -401,7 +440,7 @@ def printAccumulatorConfigurations(combinations,o):
     #loop through combinations
     for i in range(len(combinations)):
         #print accumulator values
-            print("Combination #", combinations[i,0])
+            print("Combination #", i+1)
             print("Cell Brand:", cellBrand[int(combinations[i,1])], "Cell Model",cellModel[int(combinations[i,1])])
             print("Number of cells in series:", combinations[i,2], "cells")
             print("Number of cells in parallel:", combinations[i,3], "cells")
@@ -409,7 +448,7 @@ def printAccumulatorConfigurations(combinations,o):
             print("The accumulator has a current of", combinations[i,5], "A")
             print("The accumulator has a power of", combinations[i,8], "kW")
             print("The accumulator has a capacity of", combinations[i,7], "Ah")
-            print("The accumulator has a discharge time of", combinations[i,9], "hours")
+            print("The accumulator has a discharge time of", combinations[i,9], "min")
             print("The accumulator has an energy of", combinations[i,6], "kWh")
             print("The accumulator has a cost of $",combinations[i,18], "USD")
             print("The accumulator has a mass of", round(combinations[i,19] , 4), "kg")
@@ -424,32 +463,54 @@ def printAccumulatorConfigurations(combinations,o):
             print("Fuse current:", combinations[i,16], "A")
             print("Main fuse current:", combinations[i,17], "A")
             print("Sizing: (tbd)")
+            print("Length:", combinations[i,20], "m")
+            print("Width:", combinations[i,21], "m")
+            print("Height:", combinations[i,22], "m")
             print("")
     #print number of possible combinations
-    print("There are", o, "possible accumulator configurations")
+    print("There are", len(combinations), "possible accumulator configurations")
 
 #FUNCTION: print all possible accumulator configurations for input into spreadsheet
 def printAccumulatorConfigurationsSpreadsheet(combinations,o):       
-    #delete combinations where main fuse is 0
-    combinations = combinations[combinations[:,17] != 0]
 
-    #delete duplicate entries and zeros
-    combinations = np.unique(combinations, axis=0)
 
     #loop through combinations
     for i in range(len(combinations)):
         #print accumulator values
-        print(combinations[i,0] , "," , cellBrand[int(combinations[i,1])] , "," , cellModel[int(combinations[i,1])] , "," , combinations[i,2] , "," , combinations[i,3] , "," , combinations[i,4] , "," , combinations[i,5] , "," , combinations[i,8] , "," , combinations[i,7] , "," , combinations[i,9] , "," , combinations[i,6] , "," , combinations[i,18] , "," , combinations[i,19] , "," , combinations[i,10] , "," , combinations[i,11] , "," , combinations[i,12] , "," , combinations[i,13] , "," , combinations[i,14] , "," , combinations[i,15] , "," , combinations[i,16] , "," , combinations[i,17])
-
+        print(combinations[i ,0] , "," , cellBrand[int(combinations[i,1])] , "," , cellModel[int(combinations[i,1])] , "," , combinations[i,2] , "," , combinations[i,3] , "," , combinations[i,4] , "," , combinations[i,5] , "," , combinations[i,8] , "," , combinations[i,7] , "," , combinations[i,9] , "," , combinations[i,6] , "," , combinations[i,18] , "," , combinations[i,19] , "," , combinations[i,10] , "," , combinations[i,11] , "," , combinations[i,12] , "," , combinations[i,13] , "," , combinations[i,14] , "," , combinations[i,15] , "," , combinations[i,16] , "," , combinations[i,17], "," , combinations[i,20],",",combinations[i,21],",",combinations[i,22])
     
     #print row headers
-    print("Combination #" , "," , "Cell Brand" , "," , "Cell Model" , "," , "Number of cells in series" , "," , "Number of cells in parallel" , "," , "The accumulator has a voltage" , "," , "The accumulator has a current" , "," , "The accumulator has a power" , "," , "The accumulator has a capacity" , "," , "The accumulator has a discharge time" , "," , "The accumulator has an energy" , "," , "The accumulator has a cost" , "," , "The accumulator has a mass" , "," , "Number of segments" , "," , "Number of cells in series per segment" , "," , "Number of cells in parallel per segment" , "," , "Segment voltage" , "," , "Segment current" , "," , "Segment energy" , "," , "Fuse current" , "," , "Main fuse current")
+    print("Combination #" , "," , "Cell Brand" , "," , "Cell Model" , "," , "Series" , "," , "Parallell" , "," , "Voltage" , "," , "Current" , "," , "Power" , "," , "Capacity" , "," , "Discharge Time" , "," , "Energy" , "," , "Cost" , "," , "Mass" , "," , "Segments" , "," , "Series per Segment" , "," , "Parallel Per Segment" , "," , "Segment Voltage" , "," , "Segment Current" , "," , "Segment Energy" , "," , "Cell Fuse Current" , "," , "Main Fuse Current", ","  , "Length" , "," , "Width" , "," , "Height")
+
     print("")
 
     #print number of possible combinations
     print("There are", o, "possible accumulator configurations")
 
 
+#FUNCTION calculate decision matrix for accumulator
+def decisionMatrix(combinations):
+    """ calculates a decision matrix for the accumulator, based on weighted values
+    INPUTS:
+        combinations: array of possible accumulator configurations
+    OUTPUTS:
+        compositeScore
+    """
+
+    #set criteria weights (0-1): 0 = not important, 1 = very important
+    amperageWeight = 0.4 #Levi (technical director)
+    dischargeTimeWeight = 0.4 #Levi (technical director)
+    capacityWeight = 0.8 #Levi (technical director)
+    cellLevelFusingWeight = 0.2 #Levi (technical director)
+    massWeight = 0.2 #Levi (technical director)
+    costWeight = 0.8 #Levi (technical director)
+    heightWeight = 0.5 #Mike (chassis lead)
+    widthWeight = 0.7 #Mike (chassis lead)
+    lengthWeight = 1.0 #Mike (chassis lead)
+    #TBD: set these
+    internalResistanceWeight = 0
+    cutOffTempWeight = 0
+    brandReputationWeight = 0
 
 
 
@@ -461,5 +522,6 @@ configs, index = calculateAccumulatorConfigurations()
 
 #outouts accumulator values in easily readable form
 printAccumulatorConfigurations(configs,index)
+
 
 
