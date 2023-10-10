@@ -118,11 +118,9 @@ def accumulatorPackaging(series,parallel,segments,I_accumulator):
     cellSpacing = (I_cellSpacingSlope * I_accumulator + I_cellSpacingIntercept)/1000 #m
     horizontalSpacing = (((cellSpacing+cellDiameter)**2-(verticalSpacing)**2)) ** 0.5
 
+    #calculate length, width, and height of segment
     segmentLength = series * horizontalSpacing #m
     accumulatorLength = segmentLength #m, 
-    
-    #calculate length, width, and height of segment
-
     segmentWidth = parallel * verticalSpacing + (2*0.0023) #m
     segmentHeight = 0.08
 
@@ -130,7 +128,7 @@ def accumulatorPackaging(series,parallel,segments,I_accumulator):
     accumulatorWidth = segmentHeight * segments +0.03
     accumulatorHeight = segmentWidth #m 
     
-    
+    #make sure segment isnt longer than 
 
     #make sure smallest dimension is height
     #if length is less than height, swap length and height
@@ -169,6 +167,139 @@ def accumulatorPackaging(series,parallel,segments,I_accumulator):
 
     #filter for values that will not fit (size of last year's accumulator)
     return accumulatorLength, accumulatorWidth, accumulatorHeight
+
+def accumulatorPackagingV2(series,parallel,segments,I_accumulator):
+    """
+    Calculates the best packaging for the accumulator (without mounting tabs)
+    INPUTS:
+        series: number of cells in series
+        parallel: number of cells in parallel
+        segments: number of segments
+    OUTPUTS:
+        length: length of accumulator
+        width: width of accumulator
+        height: height of accumulator
+    """
+    
+    #calculate cell spacing based on accumulator amperage
+    cellSpacing = (I_cellSpacingSlope * I_accumulator + I_cellSpacingIntercept)/1000 #m
+    horizontalSpacing = (((cellSpacing+cellDiameter)**2-(verticalSpacing)**2)) ** 0.5
+
+    #calculate length, width, and height of segment
+    segmentLength = series * horizontalSpacing #m
+    
+    segmentWidth = parallel * verticalSpacing + (2*0.0023) #m
+    segmentHeight = 0.08
+
+
+    #if segment width is larger than segment length, swap them
+    if (segmentWidth > segmentLength):
+        segmentWidth, segmentLength = segmentLength, segmentWidth
+    
+    CGH = 0
+
+    #1 segment deep configurations
+    #prefrence 1: E or G (narrow MRH, behind MRH)
+    #if <= 4 segments, and width <= 11", and length <= 15" use G
+    if segments <= 4 and  segmentWidth <= 0.279 and segmentLength <= 0.381:
+         configs = 1
+         CGH = segmentLength/2
+    #2 deg deep
+    elif segments <= 8 and segmentWidth <= 0.2792 and segmentLength <= 0.381/2:
+        configs=1.5
+        CGH = segmentWidth/2
+    #if <= 3 segments, and width <= 12", and length <= 16" use E
+    elif segments <= 3 and segmentWidth <= 0.304 and segmentLength <= 0.406:
+        configs = 2
+        CGH = segmentLength/2
+    #2 seg deep
+    elif segments <= 6 and segmentLength <= 0.304 and segmentWidth <= 0.406/2:
+        configs = 2.5
+        CGH = segmentLength/2
+    #prefrence 2: A or C (wider MRH, in cockpit)
+    #if <= 5 segments, and width <=11, and length <= 16" use C
+    elif segments <= 5 and segmentWidth <= 0.279 and segmentLength <= 0.406:
+        configs = 3
+        CGH=segmentLength/2
+    elif segments <= 10 and segmentLength <= 0.2792 and segmentWidth <= 0.406/2:
+        configs = 3.5
+        CGH=segmentLength/2
+    #if <= 3 segments, and width <= 16", and length <= 16" use A
+    elif segments <= 3 and segmentWidth <= 0.406 and segmentLength <= 0.406:
+        configs = 4
+        CGH = min(segmentWidth,segmentLength)/2 
+    #2 seg deep
+    elif segments <= 6 and segmentWidth <= 0.406/2 and segmentLength <= 0.406:
+        configs = 4.5
+        CGH = segmentLength/2 
+    #prefrence 3: F or H (narrow MRH, in cockpit)
+    #if segments = 7, and segment width <4", segment length <12" use F
+    elif segments == 7 and segmentLength <= 0.304 and segmentWidth <= 0.1016:
+        configs = 5.0
+        CGH = segmentWidth / 2
+    #if segments = 6, and segment width <7", segment length <12" use F
+    elif segments == 6 and segmentLength <= 0.304 and segmentWidth <= 0.1778:
+        configs = 5.1
+        CGH = segmentWidth / 2
+    #if segments = 5 and segment width < 10.5", segment length <12 use F
+    elif segments == 5 and segmentLength <= 0.304 and segmentWidth <= 0.3048:
+        configs = 5.2
+        CGH = segmentWidth / 2
+    #if segments = 4, and segment length < 13.5, segment width <12 " use F
+    elif segments == 4 and segmentLength <= 0.3429 and segmentWidth <= 0.3048:
+        configs = 5.3
+        CGH = segmentWidth / 2
+    #if segments = 3, and segment length < 16, segment width <12 " use F
+    elif segments == 3 and segmentLength <= 0.4064 and segmentWidth <= 0.3048:
+        configs = 5.4
+        CGH = segmentWidth / 2
+    elif segments <= 4 and ((27-segmentWidth < segmentLength)or(27-segmentLength<segmentWidth)):
+        configs = 6
+        CGH = max(segmentWidth,segmentLength) / 2
+
+    
+    #prefrence 4: B or D (wide MRH, in cockpit)
+    #if segments = 7, and segment width <4", segment length <16" use B
+    elif segments == 7 and segmentLength <= 0.406 and segmentWidth <= 0.1016:
+        configs = 5.5
+        CGH = segmentWidth / 2
+
+    #if segments = 6, and segment width <7", segment length <16" use B
+    elif segments == 6 and segmentLength <= 0.406 and segmentWidth <= 0.1778:
+        configs = 5.6
+        CGH = segmentWidth / 2
+
+    #if segments = 5 and segment width < 10.5", segment length <16 use B
+    elif segments == 5 and segmentLength <= 0.406 and segmentWidth <= 0.2667:
+        configs = 5.7
+        CGH = segmentWidth / 2
+
+
+    #if segments = 4, and segment width < 13.5, segment length <16 " use B
+    elif segments == 4 and segmentLength <=0.406 and segmentWidth <= 0.3429:
+        configs = 5.8
+        CGH = segmentWidth / 2
+
+
+    #if segments = 3, and segment length < 16, segment width <16 " use B
+    elif segments == 3 and segmentLength <= 0.406 and segmentWidth <= 0.4064:
+        configs = 5.9
+        CGH = max(segmentWidth,segmentLength) / 2
+
+
+    #if segments <=5, use D
+    elif segments <= 5 and ((27-segments < segmentWidth)or(27*segments<segmentHeight)):   
+        configs = 8
+        CGH = max(segmentWidth,segmentLength) / 2
+
+    else:
+        configs = 0
+        CGH = 0
+
+
+
+    
+    return configs, CGH
 
 #FUNCTION: calculate the cost and mass of the accumulator
 def accumulatorCost(brand,series,parallel):
@@ -271,14 +402,20 @@ def calculateAccumulatorConfigurations():
             I_mainFuse_max = (p * I_fuse_cell)/3
 
             #calculate accumulator main fuse
-            #standard fuse sizes are 50,60,70,80,90,100,150,180,200,225,250,275
+            #standard fuse sizes are 35,40,45,50,60,70,80,90,100,150,180,200,225,250,275
             #https://www.digikey.com/en/products/filter/electrical-specialty-fuses/155?s=N4IgjCBcoGw1oDGUBmBDANgZwKYBoQB7KAbRACYAOAdgAYBWSkA8gTlceuZBkvttrcwA2mCYEwYACxSAzIIlTa5chEWUp1eBPq8ZQmFVrbwlVcpABdAgAcALlBABlOwCcAlgDsA5iAC%2BLNJSCCDIkOjY%2BESkIFrktJrccQxcBMn09EmGDMFp2fTkWfH0arH5CmXxUqxFCUzWIPaOLh4%2B-gQAtIXQoVBuAK5RxJBkmZZ%2BE0A
             #set fuse size to closest standard fuse size that is less than I_accumulator
             
-            #if I_accumulator is less than 50, return error
-            if (I_mainFuse_max < 50):
-                print("ERROR: max fuse current is less than 50A")
+            #if I_accumulator is less than 35, return error
+            if (I_mainFuse_max < 35):
+                print("ERROR: max fuse current is less than 35A")
                 I_mainFuse = 0
+            elif (I_mainFuse_max < 40):
+                I_mainFuse = 35
+            elif (I_mainFuse_max < 45):
+                I_mainFuse = 40
+            elif (I_mainFuse_max < 50):
+                I_mainFuse = 45
             elif (I_mainFuse_max < 60):
                 I_mainFuse = 50
             elif (I_mainFuse_max < 70):
@@ -398,7 +535,8 @@ def calculateAccumulatorConfigurations():
                         combinations [o,19] = p * s * cellMass[i] #kg
 
                         #record dimensions
-                        combinations[o,20], combinations[o,21], combinations[o,22] = accumulatorPackaging(s_segment,p,n,I_accumulator)
+                        #combinations[o,20], combinations[o,21], combinations[o,22] = accumulatorPackaging(s_segment,p,n,I_accumulator)
+                        combinations[o,23],combinations[o,24] = accumulatorPackagingV2(s_segment,p,n,I_accumulator)
  
                             
                         #increment counter
@@ -410,8 +548,11 @@ def calculateAccumulatorConfigurations():
     #delete combinations where main fuse is 0
     combinations = combinations[combinations[:,17] != 0]
 
+    #delete combinations where accumulator packaging is 0
+    combinations = combinations[combinations[:,23] != 0]
+
     #delete combinations where accumulator length is 0
-    combinations = combinations[combinations[:,20] != 0]
+    #combinations = combinations[combinations[:,20] != 0]
 
     #return array of possible combinations
     return combinations, o
@@ -435,12 +576,12 @@ def printAccumulatorConfigurations(combinations,o):
     combinations = combinations[combinations[:,19].argsort()]
     #reverse combinations so that lowest mass is first
     combinations = combinations[::-1]
-
     
+
     #loop through combinations
     for i in range(len(combinations)):
         #print accumulator values
-            print("Combination #", i+1)
+            print("Combination #", combinations[i,0])
             print("Cell Brand:", cellBrand[int(combinations[i,1])], "Cell Model",cellModel[int(combinations[i,1])])
             print("Number of cells in series:", combinations[i,2], "cells")
             print("Number of cells in parallel:", combinations[i,3], "cells")
@@ -463,24 +604,30 @@ def printAccumulatorConfigurations(combinations,o):
             print("Fuse current:", combinations[i,16], "A")
             print("Main fuse current:", combinations[i,17], "A")
             print("Sizing: (tbd)")
-            print("Length:", combinations[i,20], "m")
-            print("Width:", combinations[i,21], "m")
-            print("Height:", combinations[i,22], "m")
+            #print("Length:", combinations[i,20], "m")
+            #print("Width:", combinations[i,21], "m")
+            #print("Height:", combinations[i,22], "m")
+            print("Configuration:", combinations[i,23])
+            print("CH height:", combinations[i,24])
             print("")
     #print number of possible combinations
-    print("There are", len(combinations), "possible accumulator configurations")
+    print("There are", o, "possible accumulator configurations")
 
 #FUNCTION: print all possible accumulator configurations for input into spreadsheet
 def printAccumulatorConfigurationsSpreadsheet(combinations,o):       
+    #print row headers
+    #print("Combination #" , "," , "Cell Brand" , "," , "Cell Model" , "," , "Series" , "," , "Parallell" , "," , "Voltage" , "," , "Current" , "," , "Power" , "," , "Capacity" , "," , "Discharge Time" , "," , "Energy" , "," , "Cost" , "," , "Mass" , "," , "Segments" , "," , "Series per Segment" , "," , "Parallel Per Segment" , "," , "Segment Voltage" , "," , "Segment Current" , "," , "Segment Energy" , "," , "Cell Fuse Current" , "," , "Main Fuse Current", ","  , "Length" , "," , "Width" , "," , "Height")
+    print("Combination #" , "," , "Cell Brand" , "," , "Cell Model" , "," , "Series" , "," , "Parallell" , "," , "Voltage" , "," , "Current" , "," , "Power" , "," , "Capacity" , "," , "Discharge Time" , "," , "Energy" , "," , "Cost" , "," , "Mass" , "," , "Segments" , "," , "Series per Segment" , "," , "Parallel Per Segment" , "," , "Segment Voltage" , "," , "Segment Current" , "," , "Segment Energy" , "," , "Cell Fuse Current" , "," , "Main Fuse Current", ","  , "Configuration", "CG Height")
 
 
     #loop through combinations
     for i in range(len(combinations)):
         #print accumulator values
-        print(combinations[i ,0] , "," , cellBrand[int(combinations[i,1])] , "," , cellModel[int(combinations[i,1])] , "," , combinations[i,2] , "," , combinations[i,3] , "," , combinations[i,4] , "," , combinations[i,5] , "," , combinations[i,8] , "," , combinations[i,7] , "," , combinations[i,9] , "," , combinations[i,6] , "," , combinations[i,18] , "," , combinations[i,19] , "," , combinations[i,10] , "," , combinations[i,11] , "," , combinations[i,12] , "," , combinations[i,13] , "," , combinations[i,14] , "," , combinations[i,15] , "," , combinations[i,16] , "," , combinations[i,17], "," , combinations[i,20],",",combinations[i,21],",",combinations[i,22])
-    
-    #print row headers
-    print("Combination #" , "," , "Cell Brand" , "," , "Cell Model" , "," , "Series" , "," , "Parallell" , "," , "Voltage" , "," , "Current" , "," , "Power" , "," , "Capacity" , "," , "Discharge Time" , "," , "Energy" , "," , "Cost" , "," , "Mass" , "," , "Segments" , "," , "Series per Segment" , "," , "Parallel Per Segment" , "," , "Segment Voltage" , "," , "Segment Current" , "," , "Segment Energy" , "," , "Cell Fuse Current" , "," , "Main Fuse Current", ","  , "Length" , "," , "Width" , "," , "Height")
+        #print(combinations[i ,0] , "," , cellBrand[int(combinations[i,1])] , "," , cellModel[int(combinations[i,1])] , "," , combinations[i,2] , "," , combinations[i,3] , "," , combinations[i,4] , "," , combinations[i,5] , "," , combinations[i,8] , "," , combinations[i,7] , "," , combinations[i,9] , "," , combinations[i,6] , "," , combinations[i,18] , "," , combinations[i,19] , "," , combinations[i,10] , "," , combinations[i,11] , "," , combinations[i,12] , "," , combinations[i,13] , "," , combinations[i,14] , "," , combinations[i,15] , "," , combinations[i,16] , "," , combinations[i,17], "," , combinations[i,20],",",combinations[i,21],",",combinations[i,22])
+        print(combinations[i ,0] , "," , cellBrand[int(combinations[i,1])] , "," , cellModel[int(combinations[i,1])] , "," , combinations[i,2] , "," , combinations[i,3] , "," , combinations[i,4] , "," , combinations[i,5] , "," , combinations[i,8] , "," , combinations[i,7] , "," , combinations[i,9] , "," , combinations[i,6] , "," , combinations[i,18] , "," , combinations[i,19] , "," , combinations[i,10] , "," , combinations[i,11] , "," , combinations[i,12] , "," , combinations[i,13] , "," , combinations[i,14] , "," , combinations[i,15] , "," , combinations[i,16] , "," , combinations[i,17], "," , combinations[i,23], "," , combinations[i,24])
+
+
+ 
 
     print("")
 
@@ -496,21 +643,88 @@ def decisionMatrix(combinations):
     OUTPUTS:
         compositeScore
     """
+    #initialize decision matrix
+    matrix = np.zeros((len(combinations),20))
 
-    #set criteria weights (0-1): 0 = not important, 1 = very important
-    amperageWeight = 0.4 #Levi (technical director)
-    dischargeTimeWeight = 0.4 #Levi (technical director)
-    capacityWeight = 0.8 #Levi (technical director)
-    cellLevelFusingWeight = 0.2 #Levi (technical director)
-    massWeight = 0.2 #Levi (technical director)
-    costWeight = 0.8 #Levi (technical director)
-    heightWeight = 0.5 #Mike (chassis lead)
-    widthWeight = 0.7 #Mike (chassis lead)
-    lengthWeight = 1.0 #Mike (chassis lead)
-    #TBD: set these
-    internalResistanceWeight = 0
-    cutOffTempWeight = 0
-    brandReputationWeight = 0
+    #normalize amperage between 0 and 1
+    amperage = combinations[:,5]
+    amperage = amperage/amperage.max()
+
+    #normalize discharge time between 0 and 1
+    dischargeTime = combinations[:,9]
+    dischargeTime = dischargeTime/dischargeTime.max()
+
+    #normalize capacity between 0 and 1
+    capacity = combinations[:,7]
+    capacity = capacity/capacity.max()
+
+    #normalize cell level fusing between 0 and 1
+    cellFuse = combinations[:,16]
+    cellFuse = cellFuse/cellFuse.max()
+
+    #normalize mass between 0 and 1
+    mass = combinations[:,19]
+    mass = mass/mass.max()
+
+    #normalize cost between 0 and 1
+    cost = combinations[:,18]
+    cost = cost/cost.max()
+
+    #normalize CG height between 0 and 1
+    CGH = combinations[:,24]
+    CGH = CGH/CGH.max()
+
+    #print matrix headers
+    print("Combination #, Amperage, Discharge Time, Capacity, Cell Fuse, Mass, Cost, Touch Safe, Even Segments, Configuration")
+
+    
+    for i in range(len(combinations)):
+        #set values for each criteria between 0 and 1
+
+        matrix[i,0] = amperage[i]
+        matrix[i,1] = dischargeTime[i]
+        matrix[i,2] = capacity[i]
+        matrix[i,3] = cellFuse[i]
+        matrix[i,4] = mass[i]
+        matrix[i,5] = cost[i]
+        #if less than 60V per segment, set to 1
+        if (combinations[i,13] < 60):
+            matrix[i,6] = 1
+        #if more than 60V per segment, set to 0
+        else:
+            matrix[i,6] = 0
+        #if even number of segments, set to 1
+        if (combinations[i,10] % 2 == 0):
+            matrix[i,7] = 1
+        #if odd number of segments, set to 0
+        else:
+            matrix[i,7] = 0
+        #if config is e or g, set to 1 (between 1 and 2.9)
+        if (combinations[i,23] >= 1 and combinations[i,23] <= 2.9):
+            matrix[i,8] = 1
+        #if config is a or c, set to 0.8 (between 3 and 4.9)
+        elif (combinations[i,23] >= 3 and combinations[i,23] <= 4.9):
+            matrix[i,8] = 0.8
+        #if config is f or h, set to 0.5 (between 5 and 6.9)
+        elif (combinations[i,23] >= 5 and combinations[i,23] <= 6.9):
+            matrix[i,8] = 0.5
+        #if config is b or d, set to 0.3 (between 7 and 8.9)
+        elif (combinations[i,23] >= 7 and combinations[i,23] <= 8.9):
+            matrix[i,8] = 0.3
+        matrix[i,9] = CGH[i]
+
+       
+
+
+        #print matrix in CSV form
+        print(i,",",matrix[i,0],",",matrix[i,1],",",matrix[i,2],",",matrix[i,3],",",matrix[i,4],",",matrix[i,5],",",matrix[i,6],",",matrix[i,7],",",matrix[i,8],",",matrix[i,9])
+        
+
+
+
+
+
+    
 
 
 
@@ -522,6 +736,9 @@ configs, index = calculateAccumulatorConfigurations()
 
 #outouts accumulator values in easily readable form
 printAccumulatorConfigurations(configs,index)
+
+#outputs decison matrix in csv form
+#decisionMatrix(configs)
 
 
 
