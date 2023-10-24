@@ -376,11 +376,12 @@ def calculateAccumulatorConfigurations():
         I_fuse_cell = 0 #A
 
         #get closest integer number of cells in parallel to reach target current
-        p_max = Math.floor(I_MAX_MOTOR / I_cell[i]) #A
+        p_max = Math.floor(300 / I_cell[i]) #A
         p_min = Math.floor((100) / I_cell[i]) #A
         
         #create array of integers between p_max and p_min
         p_accumulator_range = np.arange(p_min, p_max+1, 1)
+        
         
         #loop through possible number of cells in parallel
         for k in range(len(p_accumulator_range)):
@@ -442,7 +443,7 @@ def calculateAccumulatorConfigurations():
                 I_mainFuse = 275
 
             #loop through possible number of segments
-            for n in range(1, 9):
+            for n in range(8, 12):
     
                 #calculate max and min accumulator voltage (+= 1.25% of target voltage)
                 V_accumulator_max = V_target_accumulator * 1.0125 #V
@@ -455,10 +456,12 @@ def calculateAccumulatorConfigurations():
     
                 #create array of integers between s_seg_max and s_seg_min
                 s_seg_range = np.arange(s_seg_min, s_seg_max+1, 1)
-    
+
                 #loop through possible number of cells in series per segment
                 for j in range(len(s_seg_range)):
-    
+                
+                    
+
                     #calculate segment values
                     s_segment = s_seg_range[j] #number of cells in series per segment
                     p_segment = p #number of cells in parallel per segment
@@ -476,34 +479,36 @@ def calculateAccumulatorConfigurations():
 
                     #calculate segment weight
                     segmentWeight = p_segment * s_segment * cellMass[i] #kg
-    
-    
+                    
+
                     #check if combination is rules legal
                     #make sure segment weight is less than 12kg (F.10.3.2.b.)
                     if (segmentWeight > 12):
-                        if (debug==True and i==1):
+                        if (debug==True):
                             print("rejected because segment weight is more than 12kg")
                     #check if segment voltage is more than 120V
                     elif (V_segment> 120):
-                        if (debug==True and i==1):
-                            print("rejected because segment voltage is more than 120V")        
+                        if (debug==True):
+                            print("rejected because segment voltage is more than 120V")    
                     #check if segment energy is more than 6 MJ
                     elif (E_segment > 6000000):
-                        if (debug==True and i==1):
+                        if (debug==True):
                             print("rejected because segment energy is more than 6MJ")
                     #elif (V_segment > 60):
                         #if (debug==True):
                             #print("rejected because not touch safe (voltage >60V)")
                     #check if energy is less than 5 kWh
                     elif (E_accumulator < 5.5):
-                        if (debug==True and i==1):
+                        if (debug==True):
                             print("rejected because accumulator energy is more than 5.5kWh")
                     #check that power is less than 80kW
-                    elif (P_accumulator > 80):
-                        if (debug==True and i==1):
+                    elif (V_accumulator*I_mainFuse_max/1000 > 80):
+                        if (debug==True):
                             print("rejected because accumulator power is more than 80kW")
+
                     else:
                         #record combination
+                        print("meep")
     
                         combinations[o,0] =  o #combination number
                         combinations [o,1] = i #cell index
@@ -538,7 +543,10 @@ def calculateAccumulatorConfigurations():
                         #combinations[o,20], combinations[o,21], combinations[o,22] = accumulatorPackaging(s_segment,p,n,I_accumulator)
                         combinations[o,23],combinations[o,24] = accumulatorPackagingV2(s_segment,p,n,I_accumulator)
  
-                            
+                        if(s_seg_range[j] == 16 and i==1 and p==6):
+                            print("meep")
+                            print(n)    
+                            print(combinations[o,23],combinations[o,24])
                         #increment counter
                         o += 1
 
@@ -553,6 +561,7 @@ def calculateAccumulatorConfigurations():
 
     #delete combinations where accumulator length is 0
     #combinations = combinations[combinations[:,20] != 0]
+    
 
     #return array of possible combinations
     return combinations, o
