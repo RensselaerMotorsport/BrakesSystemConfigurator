@@ -1,25 +1,46 @@
-from dotenv import load_dotenv
+# from dotenv import load_dotenv
+# from flask import Flask, render_template, request
+
+from flask_wtf import FlaskForm
+from wtforms import StringField, SubmitField
+import json
+
 
 
 from pprint import pprint
 import requests
 import os
 
-load_dotenv()
+#load_dotenv()
 
-def getConfigs(FOS="2"):
+def getTheConfigs(a,b):
+    if (a.isnumeric() & b.isnumeric()):
+        a=float(a)
+        b=float(b)
+    result = a*b
+    return result
 
-    return "test"
+# def getTheConfigs(fos=1):
+#     #fos = requests.get().json()
 
-if __name__ == "__main__":
-    FOS = input("\nPlease enter a factor of safety: ")
+#     fos = request.args.get['fos']
 
-    # Check for empty strings or string with only spaces
-    # This step is not required here
-    # if not bool(city.strip()):
-    #     city = "Kansas City"
+#     print("HI")
+#     print(fos)
+#     print("Hi2")
 
-    config_outputs = getConfigs(FOS)
+#     force = 2 * fos
+#     return str(force)
 
-    print("\n")
-    pprint(config_outputs)    
+# if __name__ == "__main__":
+#     fos = input("\nPlease enter a factor of safety: ")
+
+#     # Check for empty strings or string with only spaces
+#     # This step is not required here
+#     # if not bool(city.strip()):
+#     #     city = "Kansas City"
+
+#     config_outputs = getTheConfigs(fos)
+
+#     print("\n")
+#     pprint(config_outputs)    
