@@ -13,34 +13,49 @@ import os
 
 #load_dotenv()
 
-def getTheConfigs(a,b):
-    if (a.isnumeric() & b.isnumeric()):
-        a=float(a)
-        b=float(b)
-    result = a*b
+def getTheConfigs(vehicleWeight, frontTireDiameter, rearTireDiameter, wheelbase, forwardWeightDistribution, centerOfGravityHeight, brakePedalRatio, brakeBias):
+    
+    # vehicle data inputs
+    vehicleWeight = float(vehicleWeight)
+    frontTireDiameter = float(frontTireDiameter)
+    rearTireDiameter = float(rearTireDiameter)
+    wheelbase = float(wheelbase)
+    forwardWeightDistribution = float(forwardWeightDistribution)
+    centerOfGravityHeight = float(centerOfGravityHeight)
+    # brake data inputs
+    brakePedalRatio = float(brakePedalRatio)
+    brakeBias = float(brakeBias)
+    frontMasterCylinder = float(frontMasterCylinder)
+    rearMasterCylinder = float(rearMasterCylinder)
+    frontCaliper = float(frontCaliper)
+    rearCaliper = float(rearCaliper)
+    frontRotorOuter = float(frontRotorOuter)
+    rearRotorOuter = float(rearRotorOuter)
+    # user prefrence inputs
+    factorOfSafety = float(factorOfSafety)
+    priority = float(priority)
+    
+
+    result = vehicleWeight*frontTireDiameter*rearTireDiameter*wheelbase*forwardWeightDistribution*centerOfGravityHeight*brakePedalRatio*brakeBias
     return result
 
-# def getTheConfigs(fos=1):
-#     #fos = requests.get().json()
+    #    <input type="text" name="vehicleWeight" placeholder="vehicle weight with driver [lbs]" required="required" /> <br>
+    #     <input type="text" name="frontTireDiameter" placeholder="front tire diameter [in]" required="required" /> <br>
+    #     <input type="text" name="rearTireDiameter" placeholder="rear tire diameter [in]" required="required" /> <br>
+    #     <input type="text" name="wheelbase" placeholder="wheelbase length [in]" required="required" /> <br>
+    #     <input type="text" name="forwardWeightDistribution" placeholder="forward weight distribution [%]" required="required" /> <br>
+    #     <input type="text" name="centerOfGravityHeight" placeholder="center of gravity height [in]" required="required" /> <br>
 
-#     fos = request.args.get['fos']
-
-#     print("HI")
-#     print(fos)
-#     print("Hi2")
-
-#     force = 2 * fos
-#     return str(force)
-
-# if __name__ == "__main__":
-#     fos = input("\nPlease enter a factor of safety: ")
-
-#     # Check for empty strings or string with only spaces
-#     # This step is not required here
-#     # if not bool(city.strip()):
-#     #     city = "Kansas City"
-
-#     config_outputs = getTheConfigs(fos)
-
-#     print("\n")
-#     pprint(config_outputs)    
+    #     <h2>Brake Data Inputs</h2>
+    #     <input type="text" name="brakePedalRatio" placeholder="brake pedal ratio"/> <br>
+    #     <input type="text" name="brakeBias" placeholder="brake bias"/> <br>
+    #     <input type="text" name="frontMasterCylinder" placeholder="front master cylinder size [in]"/> <br>
+    #     <input type="text" name="rearMasterCylinder" placeholder="rear master cylinder size [in]"/> <br>
+    #     <input type="text" name="frontCaliper" placeholder="front caliper piston area [in^2]"/> <br>
+    #     <input type="text" name="rearCaliper" placeholder="rear caliper piston area [in^2]"/> <br>
+    #     <input type="text" name="frontRotorOuter" placeholder="front rotor outer radius [in]"/> <br>
+    #     <input type="text" name="rearRotorOuter" placeholder="rear rotor outer radius [in]"/> <br>
+        
+    #     <h2>User Prefrence Inputs</h2>
+    #     <input type="text" name="factorOfSafety" placeholder="factor of safety"/> <br>
+    #     <input type="text" name="priority" placeholder="priority"/> <br>
