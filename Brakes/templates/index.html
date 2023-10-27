@@ -27,36 +27,29 @@
         <h2>Brake Data Inputs Hi</h2>
         <h3>Leave Blank to Have the Program Select For You</h3>
         <input type="text" name="brakePedalRatio" placeholder="brake pedal ratio" type="num"/> <br>
-        <input type="text" name="brakeBias" placeholder="brake bias" type="num" /> <br>
         <input type="text" name="frontMasterCylinder" placeholder="front master cylinder size [in]" type="num"/> <br>
         <input type="text" name="rearMasterCylinder" placeholder="rear master cylinder size [in]" type="num" /> <br>
         <input type="text" name="frontCaliper" placeholder="front caliper piston area [in^2]" type="num" /> <br>
+        <input type="text" name="frontPad" placeholder="front pad coeficent of friction" type="num" /> <br>
         <input type="text" name="rearCaliper" placeholder="rear caliper piston area [in^2]" type="num" /> <br>
+        <input type="text" name="rearPad" placeholder="rear pad coeficent of friction" type="num" /> <br>
         <input type="text" name="frontRotorOuter" placeholder="front rotor outer radius [in]" type="num" /> <br>
         <input type="text" name="rearRotorOuter" placeholder="rear rotor outer radius [in]" type="num"/> <br>
         
         <h2>User Prefrence Inputs</h2>
         <input type="text" name="factorOfSafety" placeholder="factor of safety" type="num"/> <br>
-        <input type="text" name="priority" placeholder="priority" type="num"/> <br>
-
+        <input type="text" name="priority" placeholder="priority" type="num" value="1"/> <br>
 
         <button type="submit" class="btn btn-primary btn-block btn-large">Calculate</button>
         <br>
     </form>
 
-    
-
-    <!-- </form>
-    <form action = "/inputs">
-        <input type="text" name = "Factor of Safety" id = "fos" placeholder="Enter your desired factor of safety" />
-        <button type="submit">Submit</button>
-    </form> -->
-
-    <br>
-    <br>
-
     {{ prediction_text }}
 
+
+
+    <br>
+    <br>
 
 </body>
 </html>

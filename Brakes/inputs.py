@@ -5,6 +5,7 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField
 import json
 
+from brakeCalcs import BrakeSystem
 
 
 from pprint import pprint
@@ -13,49 +14,64 @@ import os
 
 #load_dotenv()
 
-def getTheConfigs(vehicleWeight, frontTireDiameter, rearTireDiameter, wheelbase, forwardWeightDistribution, centerOfGravityHeight, brakePedalRatio, brakeBias):
+def getTheConfigs(vehicleWeight, frontTireDiameter, rearTireDiameter, wheelbase, forwardWeightDistribution, centerOfGravityHeight, brakePedalRatio, brakeBias, frontMasterCylinder, rearMasterCylinder, frontCaliper, frontPad, rearCaliper, rearPad, frontRotorOuter, rearRotorOuter, factorOfSafety, priority):
     
     # vehicle data inputs
-    vehicleWeight = float(vehicleWeight)
+    vehicleWeight = float(vehicleWeight)  
     frontTireDiameter = float(frontTireDiameter)
     rearTireDiameter = float(rearTireDiameter)
     wheelbase = float(wheelbase)
     forwardWeightDistribution = float(forwardWeightDistribution)
     centerOfGravityHeight = float(centerOfGravityHeight)
+    
     # brake data inputs
+    if not bool(brakePedalRatio.strip()):
+        brakePedalRatio = -1
     brakePedalRatio = float(brakePedalRatio)
-    brakeBias = float(brakeBias)
+    if not bool(frontMasterCylinder.strip()):
+        frontMasterCylinder = -1
     frontMasterCylinder = float(frontMasterCylinder)
+    if not bool(rearMasterCylinder.strip()):
+        rearMasterCylinder = -1
     rearMasterCylinder = float(rearMasterCylinder)
+    if not bool(frontCaliper.strip()):
+        frontCaliper = -1
     frontCaliper = float(frontCaliper)
+    if not bool(frontPad.strip()):
+        frontPad = -1
+    frontPad = float(frontPad)
+    if not bool(rearCaliper.strip()):
+        rearCaliper = -1
     rearCaliper = float(rearCaliper)
+    if not bool(rearPad.strip()):
+        rearPad = -1
+    rearPad = float(rearPad)
+    if not bool(frontRotorOuter.strip()):
+        frontRotorOuter = -1
     frontRotorOuter = float(frontRotorOuter)
+    if not bool(rearRotorOuter.strip()):
+        rearRotorOuter = -1
     rearRotorOuter = float(rearRotorOuter)
+    
     # user prefrence inputs
+    if not bool(factorOfSafety.strip()):
+        factorOfSafety = 2
     factorOfSafety = float(factorOfSafety)
+    if not bool(priority.strip()):
+        priority = 1
     priority = float(priority)
+
+    frontWheelShellDiameter = 0
+    rearWheelShellDiameter = 0
+    brakeBias = 0
     
 
-    result = vehicleWeight*frontTireDiameter*rearTireDiameter*wheelbase*forwardWeightDistribution*centerOfGravityHeight*brakePedalRatio*brakeBias
+    #result = BrakeSystem(vehicleWeight, frontTireDiameter, rearTireDiameter, frontWheelShellDiameter, rearWheelShellDiameter, wheelbase, forwardWeightDistribution, centerOfGravityHeight, brakePedalRatio, brakeBias, frontMasterCylinder, rearMasterCylinder, frontCaliper, rearCaliper, frontPad, rearPad, frontRotorOuter, rearRotorOuter, factorOfSafety, priority)
+    result = BrakeSystem(700, 8, 8, 10, 10, 60.5, 0.49, 13, 5.25, -1, -1, -1, -1, -1, -1, -1, -1, -1, 1.3, 2)
+
+    # #convert result array to string
+    result = str(result)
+    
+    #result = "test"
+
     return result
-
-    #    <input type="text" name="vehicleWeight" placeholder="vehicle weight with driver [lbs]" required="required" /> <br>
-    #     <input type="text" name="frontTireDiameter" placeholder="front tire diameter [in]" required="required" /> <br>
-    #     <input type="text" name="rearTireDiameter" placeholder="rear tire diameter [in]" required="required" /> <br>
-    #     <input type="text" name="wheelbase" placeholder="wheelbase length [in]" required="required" /> <br>
-    #     <input type="text" name="forwardWeightDistribution" placeholder="forward weight distribution [%]" required="required" /> <br>
-    #     <input type="text" name="centerOfGravityHeight" placeholder="center of gravity height [in]" required="required" /> <br>
-
-    #     <h2>Brake Data Inputs</h2>
-    #     <input type="text" name="brakePedalRatio" placeholder="brake pedal ratio"/> <br>
-    #     <input type="text" name="brakeBias" placeholder="brake bias"/> <br>
-    #     <input type="text" name="frontMasterCylinder" placeholder="front master cylinder size [in]"/> <br>
-    #     <input type="text" name="rearMasterCylinder" placeholder="rear master cylinder size [in]"/> <br>
-    #     <input type="text" name="frontCaliper" placeholder="front caliper piston area [in^2]"/> <br>
-    #     <input type="text" name="rearCaliper" placeholder="rear caliper piston area [in^2]"/> <br>
-    #     <input type="text" name="frontRotorOuter" placeholder="front rotor outer radius [in]"/> <br>
-    #     <input type="text" name="rearRotorOuter" placeholder="rear rotor outer radius [in]"/> <br>
-        
-    #     <h2>User Prefrence Inputs</h2>
-    #     <input type="text" name="factorOfSafety" placeholder="factor of safety"/> <br>
-    #     <input type="text" name="priority" placeholder="priority"/> <br>
