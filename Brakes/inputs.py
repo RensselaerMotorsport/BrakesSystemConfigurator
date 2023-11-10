@@ -72,6 +72,6 @@ def getTheConfigs(vehicleWeight, frontTireDiameter, rearTireDiameter, wheelbase,
     # #convert result array to string
     result = str(result)
     
-    #result = "test"
+    result = "test"
 
     return result

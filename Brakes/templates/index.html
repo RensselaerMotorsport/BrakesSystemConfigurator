@@ -8,39 +8,52 @@
 	
 
     <link href="../static/styles/style.css" rel="stylesheet" type="text/css">
-
-
-
 </head><h1>Brakes System Configurator</h1>
 <body>
     <h1>Calculate Brakes Configurations</h1>
-
-    <h2>Vehicle Data Inputs</h2>
     <form action="{{ url_for('predict')}}"method="post">
-        <input type="text" name="vehicleWeight" placeholder="vehicle weight with driver [lbs]" required="required" type="num" /> <br>
-        <input type="text" name="frontTireDiameter" placeholder="front tire diameter [in]" required="required" type="num"/> <br>
-        <input type="text" name="rearTireDiameter" placeholder="rear tire diameter [in]" required="required" type="num"/> <br>
-        <input type="text" name="wheelbase" placeholder="wheelbase length [in]" required="required" type="num"/> <br>
-        <input type="text" name="forwardWeightDistribution" placeholder="forward weight distribution [%]" required="required" type="num"/> <br>
-        <input type="text" name="centerOfGravityHeight" placeholder="center of gravity height [in]" required="required" type="num"/> <br>
-
-        <h2>Brake Data Inputs Hi</h2>
-        <h3>Leave Blank to Have the Program Select For You</h3>
-        <input type="text" name="brakePedalRatio" placeholder="brake pedal ratio" type="num"/> <br>
-        <input type="text" name="frontMasterCylinder" placeholder="front master cylinder size [in]" type="num"/> <br>
-        <input type="text" name="rearMasterCylinder" placeholder="rear master cylinder size [in]" type="num" /> <br>
-        <input type="text" name="frontCaliper" placeholder="front caliper piston area [in^2]" type="num" /> <br>
-        <input type="text" name="frontPad" placeholder="front pad coeficent of friction" type="num" /> <br>
-        <input type="text" name="rearCaliper" placeholder="rear caliper piston area [in^2]" type="num" /> <br>
-        <input type="text" name="rearPad" placeholder="rear pad coeficent of friction" type="num" /> <br>
-        <input type="text" name="frontRotorOuter" placeholder="front rotor outer radius [in]" type="num" /> <br>
-        <input type="text" name="rearRotorOuter" placeholder="rear rotor outer radius [in]" type="num"/> <br>
-        
-        <h2>User Prefrence Inputs</h2>
-        <input type="text" name="factorOfSafety" placeholder="factor of safety" type="num"/> <br>
-        <input type="text" name="priority" placeholder="priority" type="num" value="1"/> <br>
-
-        <button type="submit" class="btn btn-primary btn-block btn-large">Calculate</button>
+        <div class="container">
+            <div class="columnHeader">
+                <h2>Vehicle Data Inputs</h2>
+                <h3>Peovide information about your vehicle.</h3>
+            </div>
+            <div class="columnHeader">
+                <h2>Brake Data Inputs</h2>
+                <h3>Leave blank to let program select for you.</h3>
+            </div>
+            <div class="columnHeader">
+                <h2>User Prefrence Inputs</h2>
+                <h3>Choose what system goals to priortitize.</h3>
+            </div>
+        </div>
+        <div class="container">
+            <div class="column">
+                <input type="text" name="vehicleWeight" placeholder="vehicle weight with driver [lbs]" required="required" type="num" /> <br>
+                <input type="text" name="frontTireDiameter" placeholder="front tire diameter [in]" required="required" type="num"/> <br>
+                <input type="text" name="rearTireDiameter" placeholder="rear tire diameter [in]" required="required" type="num"/> <br>
+                <input type="text" name="wheelbase" placeholder="wheelbase length [in]" required="required" type="num"/> <br>
+                <input type="text" name="forwardWeightDistribution" placeholder="forward weight distribution [%]" required="required" type="num"/> <br>
+                <input type="text" name="centerOfGravityHeight" placeholder="center of gravity height [in]" required="required" type="num"/> <br>
+            </div>
+            <div class="column">
+                <input type="text" name="brakePedalRatio" placeholder="brake pedal ratio" type="num"/> <br>
+                <input type="text" name="frontMasterCylinder" placeholder="front master cylinder size [in]" type="num"/> <br>
+                <input type="text" name="rearMasterCylinder" placeholder="rear master cylinder size [in]" type="num" /> <br>
+                <input type="text" name="frontCaliper" placeholder="front caliper piston area [in^2]" type="num" /> <br>
+                <input type="text" name="frontPad" placeholder="front pad coeficent of friction" type="num" /> <br>
+                <input type="text" name="rearCaliper" placeholder="rear caliper piston area [in^2]" type="num" /> <br>
+                <input type="text" name="rearPad" placeholder="rear pad coeficent of friction" type="num" /> <br>
+                <input type="text" name="frontRotorOuter" placeholder="front rotor outer radius [in]" type="num" /> <br>
+                <input type="text" name="rearRotorOuter" placeholder="rear rotor outer radius [in]" type="num"/> <br>
+            </div>
+            <div class="column">
+                <input type="text" name="factorOfSafety" placeholder="factor of safety" type="num"/> <br>
+                <input type="text" name="priority" placeholder="priority" type="num" value="1"/> <br>    
+            </div>
+        </div>
+        <div class = "center">
+            <button type="submit" class="btn btn-primary btn-block btn-large">Calculate</button>
+        </div>
         <br>
     </form>
 

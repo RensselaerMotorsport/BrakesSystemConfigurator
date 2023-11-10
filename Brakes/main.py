@@ -18,14 +18,14 @@ def index():
 @app.route('/predict',methods=['POST'])
 def predict():
 
-    # vehicle data inputs
+    # column 1: vehicle data inputs
     vehicleWeight = request.form['vehicleWeight']
     frontTireDiameter = request.form['frontTireDiameter']
     rearTireDiameter = request.form['rearTireDiameter']
     wheelbase = request.form['wheelbase']
     forwardWeightDistribution = request.form['forwardWeightDistribution']
     centerOfGravityHeight = request.form['centerOfGravityHeight']
-    # brake data inputs
+    # column 2: brake data inputs
     brakePedalRatio = request.form['brakePedalRatio']
     brakeBias = 0 #TBD
     frontMasterCylinder = request.form['frontMasterCylinder']
@@ -36,13 +36,13 @@ def predict():
     rearPad = request.form['rearPad']
     frontRotorOuter = request.form['frontRotorOuter']
     rearRotorOuter = request.form['rearRotorOuter']
-    # user prefrence inputs
+    # column 3: user prefrence inputs
     factorOfSafety = request.form['factorOfSafety']
     priority = request.form['priority']
 
     result = getTheConfigs(vehicleWeight, frontTireDiameter, rearTireDiameter, wheelbase, forwardWeightDistribution, centerOfGravityHeight, brakePedalRatio, brakeBias, frontMasterCylinder, rearMasterCylinder, frontCaliper, frontPad, rearCaliper, rearPad, frontRotorOuter, rearRotorOuter, factorOfSafety, priority)
 
-    return render_template('output.html', prediction_text=str(result))
+    return render_template('index.html', prediction_text=str(result))
 
 if __name__ == "__main__":
     serve(app, host="0.0.0.0", port=8000)

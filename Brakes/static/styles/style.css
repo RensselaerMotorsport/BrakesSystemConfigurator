@@ -8,13 +8,23 @@
 h1 {
 /*	min-height: 100vh;*/
 	font-size: 2rem;
-	
+    color: #023047;
 
 }
 
+h2 {
+    color: #FB8500;
+}
+
+h3 {
+    color: #FB8500;
+}
+    
+
+
 body {
     padding: 1rem;
-    background-color: #333;
+    background-color: #8ECAE6;
     color: whitesmoke;
 /*    min-height: 50vh;*/
     display: flex;
@@ -33,10 +43,34 @@ input, button {
 input, form input[type="num"] {
     font-size: 10px;
 	display: inline;
-	width: 600;
+    width: 100%;
 	border-radius: 8px;
 	border: solid 0.5px #ffffff; 
 	margin-bottom:0.5em;
 	margin-right: 3px;  
 	text-align: center;
 }
+.columnHeader {
+    flex: 33.33%;
+    height: 100;
+    padding: 10px;
+    margin: 5px;
+    background-color: #023047;
+    text-align: center;
+}
+.column {
+    flex: 33.33%;
+    height: 460px;
+    padding: 10px;
+    margin: 5px;
+    background-color: #023047;
+    text-align: center;
+}
+.container {
+   display: flex;
+}	
+
+.center {
+    text-align: center;
+  }
+  
