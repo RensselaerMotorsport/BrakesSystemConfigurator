@@ -486,44 +486,10 @@ def BrakeSystem(vehicleWeight, frontTireDiameter, rearTireDiameter, frontWheelSh
     if (priority==3): #performance
         posibleCombinations = posibleCombinations[posibleCombinations[:,12].argsort()]
     #print results sorted by best percent off ideal balance
-    result = ""
-    for i in range(posibleCombinations.shape[0]):
-        print("Front Torque: ", posibleCombinations[i,0])
-        print("Rear Torque: ", posibleCombinations[i,1])
-        print("Brake Pedal Ratio: ", posibleCombinations[i,2])
-        print("Front Master Cylinder Size: ", posibleCombinations[i,3])
-        print("Rear Master Cylinder Size: ", posibleCombinations[i,4])
-        print("Front Caliper: ", caliperBrands[int(posibleCombinations[i,5])]  , caliperModel[int(posibleCombinations[i,5])])
-        print("Rear Caliper: ", caliperBrands[int(posibleCombinations[i,6])]  , caliperModel[int(posibleCombinations[i,6])])
-        print("Front Pad: ", padBrand[int(posibleCombinations[i,7])] , padModel[int(posibleCombinations[i,7])])
-        print("Rear Pad: ", padBrand[int(posibleCombinations[i,8])] , padModel[int(posibleCombinations[i,8])])
-        print("Front Rotor Radius: ", posibleCombinations[i,9])
-        print("Rear Rotor Radius: ", posibleCombinations[i,10])
-        print("Percent off ideal balance: ", posibleCombinations[i,12])
-        print("Total Cost: ", posibleCombinations[i,13])
-        print("Total Weight: ", posibleCombinations[i,14] , "lbs")
-        print("\n")   
-        #concatanate results into a single string
-        result.concatanate("Front Torque: ", posibleCombinations[i,0], "\n")
-        result.concatanate("Rear Torque: ", posibleCombinations[i,1], "\n")
-        result.concatanate("Brake Pedal Ratio: ", posibleCombinations[i,2], "\n")
-        result.concatanate("Front Master Cylinder Size: ", posibleCombinations[i,3], "\n")
-        result.concatanate("Rear Master Cylinder Size: ", posibleCombinations[i,4], "\n")
-        result.concatanate("Front Caliper: ", caliperBrands[int(posibleCombinations[i,5])]  , caliperModel[int(posibleCombinations[i,5])], "\n")
-        result.concatanate("Rear Caliper: ", caliperBrands[int(posibleCombinations[i,6])]  , caliperModel[int(posibleCombinations[i,6])], "\n")
-        result.concatanate("Front Pad: ", padBrand[int(posibleCombinations[i,7])] , padModel[int(posibleCombinations[i,7])], "\n")
-        result.concatanate("Rear Pad: ", padBrand[int(posibleCombinations[i,8])] , padModel[int(posibleCombinations[i,8])], "\n")
-        result.concatanate("Front Rotor Radius: ", posibleCombinations[i,9], "\n")
-        result.concatanate("Rear Rotor Radius: ", posibleCombinations[i,10], "\n")
-        result.concatanate("Percent off ideal balance: ", posibleCombinations[i,12], "\n")
-        result.concatanate("Total Cost: ", posibleCombinations[i,13], "\n")
-        result.concatanate("Total Weight: ", posibleCombinations[i,14] , "lbs", "\n")
-        result.concatanate("\n")
-    #print number of combinations
-    print("Number of combinations: ", i+1)    
+      
     
 
-    return result
+    return posibleCombinations
 
 
 def RequiredTorque(wheelbase, frontTireDiameter, rearTireDiameter, vehicleWeight, forwardWeightDistribution, centerOfGravityHeight, acceleration):

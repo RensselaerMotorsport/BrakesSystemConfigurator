@@ -40,9 +40,11 @@ def predict():
     factorOfSafety = request.form['factorOfSafety']
     priority = request.form['priority']
 
-    result = getTheConfigs(vehicleWeight, frontTireDiameter, rearTireDiameter, wheelbase, forwardWeightDistribution, centerOfGravityHeight, brakePedalRatio, brakeBias, frontMasterCylinder, rearMasterCylinder, frontCaliper, frontPad, rearCaliper, rearPad, frontRotorOuter, rearRotorOuter, factorOfSafety, priority)
+    frontCaliper, rearCaliper, result3 = getTheConfigs(vehicleWeight, frontTireDiameter, rearTireDiameter, wheelbase, forwardWeightDistribution, centerOfGravityHeight, brakePedalRatio, brakeBias, frontMasterCylinder, rearMasterCylinder, frontCaliper, frontPad, rearCaliper, rearPad, frontRotorOuter, rearRotorOuter, factorOfSafety, priority)
 
-    return render_template('index.html', prediction_text=str(result))
+    # return  '{} {} {}'.format(result1, result2, result3)
+
+    return render_template('index.html', prediction_text1=str(frontCaliper), prediction_text2=str(rearCaliper), prediction_text3=str(result3))
 
 if __name__ == "__main__":
     serve(app, host="0.0.0.0", port=8000)
